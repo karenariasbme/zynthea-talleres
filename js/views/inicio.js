@@ -1,6 +1,7 @@
 import { sb } from "../sb.js";
-import { h, must, normPlaca, formatPlaca, limpiarBusqueda, errMsg } from "../util.js";
+import { h, must, formatPlaca, errMsg } from "../util.js";
 import { pageHead, orderCard, empty, input, loading, errorBox } from "../ui.js";
+import { cargarIndice, buscarEnIndice } from "../buscar.js";
 
 export async function render(box) {
   const [ra, ru] = await Promise.all([
@@ -31,50 +32,36 @@ export async function render(box) {
             h("a", { class: "btn primary", href: "#nueva" }, "Crear la primera orden"))));
 }
 
-/** Busca por placa, nombre o cédula/RUC del cliente; cada resultado lleva al historial del vehículo. */
+/** Busca por placa, nombre o cédula del cliente, marca, modelo o color; cada resultado lleva al historial del vehículo. */
 function buscadorGlobal() {
-  const q = input({ type: "search", name: "q", placeholder: "Placa, nombre o cédula/RUC del cliente",
-    "aria-label": "Buscar por placa, cliente o cédula", autocomplete: "off" });
+  const q = input({ type: "search", name: "q", placeholder: "Placa, cliente, cédula, marca, modelo o color",
+    "aria-label": "Buscar en el taller", autocomplete: "off" });
   const results = h("div", { class: "search-results", "aria-live": "polite" });
   let primero = null;
+  let indice = null;
   let seq = 0;
 
   async function buscar() {
-    const texto = limpiarBusqueda(q.value);
+    const texto = q.value.trim();
     primero = null;
     if (texto.length < 2) return results.replaceChildren();
     const token = ++seq;
-    results.replaceChildren(loading("Buscando…"));
-    const placa = normPlaca(texto).replace(/[^A-Z0-9]/g, "");
     try {
-      const [rv, rc] = await Promise.all([
-        placa
-          ? sb.from("vehiculos").select("id,placa,marca,modelo,clientes(nombre)").ilike("placa", `%${placa}%`).order("placa").limit(8)
-          : { data: [], error: null },
-        sb.from("clientes").select("id,nombre,cedula_ruc,vehiculos(id,placa,marca,modelo)")
-          .or(`nombre.ilike."*${texto}*",cedula_ruc.ilike."*${texto}*"`).order("nombre").limit(8),
-      ]);
-      if (token !== seq) return;
-      const vehiculos = must(rv);
-      const clientes = must(rc);
-
-      // Un resultado por vehículo; los clientes sin vehículos se listan aparte
-      const filas = new Map();
-      for (const v of vehiculos) filas.set(v.id, { ...v, cliente: v.clientes?.nombre });
-      const sinVehiculo = [];
-      for (const c of clientes) {
-        if (!c.vehiculos?.length) sinVehiculo.push(c);
-        for (const v of c.vehiculos || []) if (!filas.has(v.id)) filas.set(v.id, { ...v, cliente: c.nombre, cedula: c.cedula_ruc });
+      if (!indice) {
+        results.replaceChildren(loading("Buscando…"));
+        indice = await cargarIndice();
       }
-      const lista = [...filas.values()];
-      primero = lista[0] || null;
-      if (!lista.length && !sinVehiculo.length) return results.replaceChildren(empty("No encontramos placas ni clientes con ese dato."));
+      if (token !== seq) return;
+      const r = buscarEnIndice(indice, texto, 10);
+      const sinVehiculo = r.clientes.filter((c) => !c.vehiculos.length);
+      primero = r.vehiculos[0] || null;
+      if (!r.vehiculos.length && !sinVehiculo.length) return results.replaceChildren(empty("No encontramos vehículos ni clientes con ese dato."));
       results.replaceChildren(
-        ...lista.map((v) =>
+        ...r.vehiculos.map((v) =>
           h("a", { class: "result", href: `#historial/${encodeURIComponent(v.placa)}` },
             h("span", { class: "plate" }, formatPlaca(v.placa)),
-            h("span", { class: "result-main" }, h("b", {}, `${v.marca} ${v.modelo}`),
-              h("span", { class: "muted" }, [v.cliente, v.cedula].filter(Boolean).join(" · "))),
+            h("span", { class: "result-main" }, h("b", {}, [v.marca, v.modelo, v.anio, v.color].filter(Boolean).join(" · ")),
+              h("span", { class: "muted" }, [v.cliente?.nombre, v.cliente?.cedula_ruc].filter(Boolean).join(" · "))),
             h("span", { class: "result-go", "aria-hidden": "true" }, "→"))),
         ...sinVehiculo.map((c) =>
           h("div", { class: "result disabled" },

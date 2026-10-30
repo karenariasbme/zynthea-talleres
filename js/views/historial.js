@@ -1,23 +1,26 @@
 import { sb } from "../sb.js";
-import { h, must, normPlaca, formatPlaca, fmtFecha, errMsg, limpiarBusqueda, parecePlaca } from "../util.js";
+import { h, must, formatPlaca, fmtFecha, errMsg, parecePlaca } from "../util.js";
 import { pageHead, input, empty, loading, errorBox, estadoBadge } from "../ui.js";
+import { cargarIndice, buscarEnIndice } from "../buscar.js";
 
-const AYUDA = "Escribe una placa, el nombre o la cédula/RUC del cliente para ver su historial.";
+const AYUDA = "Busca por placa, nombre o cédula del cliente, marca, modelo o color.";
 
 export async function render(box, inicial) {
   const results = h("div", { class: "stack-lg" });
-  const q = input({ type: "search", name: "q", placeholder: "Placa, cliente o cédula/RUC", required: true,
-    "aria-label": "Buscar por placa, cliente o cédula", value: parecePlaca(inicial) ? formatPlaca(inicial) : inicial || "" });
+  const q = input({ type: "search", name: "q", placeholder: "Placa, cliente, cédula, marca, modelo o color", required: true,
+    "aria-label": "Buscar en el historial", value: parecePlaca(inicial) ? formatPlaca(inicial) : inicial || "" });
+  let indice = null;
 
   async function buscar() {
-    const texto = limpiarBusqueda(q.value);
+    const texto = q.value.trim();
     if (!texto) return results.replaceChildren(empty(AYUDA));
     results.replaceChildren(loading("Buscando…"));
-    const placa = normPlaca(texto).replace(/[^A-Z0-9]/g, "");
-    const conds = [`cliente_nombre.ilike."*${texto}*"`, `cliente_cedula_ruc.ilike."*${texto}*"`];
-    if (placa) conds.push(`placa.ilike."*${placa}*"`);
     try {
-      const data = must(await sb.from("historial_ordenes").select("*").or(conds.join(","))
+      indice ??= await cargarIndice();
+      // Vehículos que coinciden (por placa, marca, modelo, color o por su dueño) → sus órdenes
+      const ids = buscarEnIndice(indice, texto, 200).vehiculos.map((v) => v.id);
+      if (!ids.length) return results.replaceChildren(empty("No hay vehículos ni clientes que coincidan con la búsqueda."));
+      const data = must(await sb.from("historial_ordenes").select("*").in("vehiculo_id", ids)
         .order("fecha_ingreso", { ascending: false }).order("numero", { ascending: false }).limit(500));
       pintar(results, data);
     } catch (e) {
@@ -33,9 +36,9 @@ export async function render(box, inicial) {
   else results.replaceChildren(empty(AYUDA));
 }
 
-/** Agrupa las órdenes por vehículo (ya vienen ordenadas por fecha, de la más reciente a la más antigua). */
+/** Agrupa las órdenes por vehículo (ya vienen ordenadas de la más reciente a la más antigua). */
 function pintar(box, ordenes) {
-  if (!ordenes.length) return box.replaceChildren(empty("No hay órdenes que coincidan con la búsqueda."));
+  if (!ordenes.length) return box.replaceChildren(empty("Los vehículos encontrados todavía no tienen órdenes."));
   const grupos = new Map();
   for (const o of ordenes) {
     if (!grupos.has(o.vehiculo_id)) grupos.set(o.vehiculo_id, []);
@@ -72,8 +75,10 @@ function detalle(o, abierto) {
       dato("Ingreso", fmtFecha(o.fecha_ingreso)),
       dato("Cómo llegó", o.observacion_ingreso),
       dato("Salida", o.fecha_salida ? fmtFecha(o.fecha_salida) : "Pendiente"),
-      dato("Cómo se va", o.observacion_salida)),
+      dato("Cómo se va", o.observacion_salida),
+      dato("Observaciones", o.observaciones)),
     h("div", { class: "actions" },
       h("a", { class: "btn small ghost", href: `#orden/${id}` }, "Ver / imprimir"),
+      h("a", { class: "btn small ghost", href: `#editar/${id}` }, "Editar"),
       !o.fecha_salida && h("a", { class: "btn small primary", href: `#cerrar/${id}` }, "Cerrar orden")));
 }

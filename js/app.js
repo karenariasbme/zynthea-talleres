@@ -21,9 +21,10 @@ const routes = {
   taller: taller.render,
   orden: orden.renderDetalle,
   cerrar: orden.renderCerrar,
+  editar: orden.renderEditar,
 };
 // Pantallas internas que resaltan una sección del menú
-const navOf = { orden: "inicio", cerrar: "inicio" };
+const navOf = { orden: "inicio", cerrar: "inicio", editar: "inicio" };
 
 let seq = 0;
 async function route() {
