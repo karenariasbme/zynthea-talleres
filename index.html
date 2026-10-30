@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema para Talleres · Zynthea Solutions</title>
+<meta name="description" content="Sistema para Talleres de Zynthea Solutions: órdenes de trabajo, clientes, vehículos e historial por placa. Pruébalo gratis 7 días.">
+<meta name="theme-color" content="#123B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-page">
+
+<main class="auth">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true"><path d="M0,15 L6,15 L8,6 L11,22 L14,15 L26,15"/></svg>
+    <span>Zynthea Solutions</span>
+  </div>
+  <h1>Sistema para Talleres</h1>
+  <p class="lead">Órdenes de trabajo, clientes, vehículos e historial por placa, desde el celular o la computadora.</p>
+
+  <div class="card auth-card">
+    <div class="tabs" id="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-login" aria-selected="true">Iniciar sesión</button>
+      <button type="button" role="tab" id="tab-signup" aria-selected="false">Probar gratis 7 días</button>
+    </div>
+
+    <form id="form-login" class="stack">
+      <label class="field"><span class="field-label">Correo</span>
+        <input class="input" type="email" name="email" autocomplete="email" required></label>
+      <label class="field"><span class="field-label">Contraseña</span>
+        <input class="input" type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn primary block" type="submit">Entrar</button>
+      <button class="link" type="button" id="go-reset">¿Olvidaste tu contraseña?</button>
+    </form>
+
+    <form id="form-signup" class="stack" hidden>
+      <label class="field"><span class="field-label">Nombre del taller</span>
+        <input class="input" type="text" name="taller" autocomplete="organization" maxlength="120" required></label>
+      <label class="field"><span class="field-label">Correo</span>
+        <input class="input" type="email" name="email" autocomplete="email" required></label>
+      <label class="field"><span class="field-label">Contraseña</span>
+        <input class="input" type="password" name="password" autocomplete="new-password" minlength="8" required>
+        <small>Mínimo 8 caracteres.</small></label>
+      <button class="btn primary block" type="submit">Crear mi demo gratis</button>
+      <p class="note">7 días gratis, sin tarjeta. Al terminar, tus datos se guardan y puedes activar tu plan.</p>
+    </form>
+
+    <form id="form-reset" class="stack" hidden>
+      <h2>Recuperar contraseña</h2>
+      <p class="note">Te enviaremos un enlace para crear una contraseña nueva.</p>
+      <label class="field"><span class="field-label">Correo</span>
+        <input class="input" type="email" name="email" autocomplete="email" required></label>
+      <button class="btn primary block" type="submit">Enviar enlace</button>
+      <button class="link" type="button" id="back-login">← Volver a iniciar sesión</button>
+    </form>
+
+    <form id="form-newpass" class="stack" hidden>
+      <h2>Crea tu nueva contraseña</h2>
+      <label class="field"><span class="field-label">Nueva contraseña</span>
+        <input class="input" type="password" name="password" autocomplete="new-password" minlength="8" required>
+        <small>Mínimo 8 caracteres.</small></label>
+      <button class="btn primary block" type="submit">Guardar contraseña</button>
+    </form>
+
+    <p id="msg" class="msg" role="status" hidden></p>
+  </div>
+
+  <p class="auth-foot">¿Dudas? <a href="https://wa.me/593967857347?text=Hola%20Karen%2C%20tengo%20dudas%20sobre%20el%20Sistema%20para%20Talleres." target="_blank" rel="noopener">Escríbenos por WhatsApp</a> · <a href="https://karenariasbme.github.io/KarenArias/talleres/">Ver planes</a></p>
+</main>
+
+<script type="module" src="js/login.js"></script>
+</body>
+</html>

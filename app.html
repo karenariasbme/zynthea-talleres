@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema para Talleres · Zynthea Solutions</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0C2A24">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="app-page">
+
+<div id="splash" class="splash" role="status"><span class="spinner" aria-hidden="true"></span>Cargando tu taller…</div>
+
+<div id="shell" class="shell" hidden>
+  <nav class="sidenav" id="nav" aria-label="Secciones">
+    <div class="side-brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true"><path d="M0,15 L6,15 L8,6 L11,22 L14,15 L26,15"/></svg>
+      <div><b>Zynthea Solutions</b><span>Sistema para Talleres</span></div>
+    </div>
+    <a href="#inicio" data-route="inicio">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Inicio</span></a>
+    <a href="#nueva" data-route="nueva">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Nueva orden</span></a>
+    <a href="#clientes" data-route="clientes">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg><span>Clientes</span></a>
+    <a href="#vehiculos" data-route="vehiculos">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16v-4l2.2-5.2A2 2 0 0 1 7 5.5h10a2 2 0 0 1 1.8 1.3L21 12v4a1 1 0 0 1-1 1h-1"/><path d="M5 17H4a1 1 0 0 1-1-1M3 12h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/></svg><span>Vehículos</span></a>
+    <a href="#historial" data-route="historial">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>Historial</span></a>
+  </nav>
+
+  <div class="main-col">
+    <header class="topbar">
+      <div class="topbar-row">
+        <svg class="brand-mark top-mark" viewBox="0 0 26 26" aria-hidden="true"><path d="M0,15 L6,15 L8,6 L11,22 L14,15 L26,15"/></svg>
+        <div class="taller-name" id="tallerName"></div>
+        <a class="btn small primary" id="activarBtn" href="https://karenariasbme.github.io/KarenArias/talleres/#planes" hidden>Activar plan</a>
+        <button class="btn small ghost-dark" id="logoutBtn" type="button">Salir</button>
+      </div>
+      <div class="banner" id="trialBanner" hidden></div>
+    </header>
+
+    <main id="view" class="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<div id="locked" class="locked" hidden>
+  <div class="card locked-card">
+    <svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true"><path d="M0,15 L6,15 L8,6 L11,22 L14,15 L26,15"/></svg>
+    <h1>Tu demo terminó</h1>
+    <p>Tus datos están guardados; activa tu plan para seguir usándolos.</p>
+    <p class="locked-taller" id="lockedTaller"></p>
+    <div class="stack">
+      <a class="btn primary block" href="https://karenariasbme.github.io/KarenArias/talleres/#planes">Ver planes</a>
+      <a class="btn whatsapp block" id="lockedWa" href="https://wa.me/593967857347" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="link" type="button" id="lockedLogout">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

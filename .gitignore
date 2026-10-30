@@ -1,0 +1,18 @@
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Dependencias y logs
+node_modules/
+*.log
+
+# Secretos (nunca subir la service_role ni variables locales)
+.env
+.env.*
+*.local
