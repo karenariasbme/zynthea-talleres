@@ -7,6 +7,15 @@ const TALLER_COLS = "id,nombre,plan,trial_ends_at,ruc,direccion,telefono,correo,
 const LOGO_TIPOS = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
 const LOGO_MAX = 1024 * 1024; // 1 MB
 
+/** Borra de la carpeta del taller todos los archivos excepto el logo vigente (incluye huérfanos de subidas fallidas). */
+async function limpiarLogos(vigente) {
+  const carpeta = state.taller.id;
+  const { data, error } = await sb.storage.from("logos").list(carpeta, { limit: 100 });
+  if (error) return; // la limpieza no debe impedir el cambio de logo
+  const sobrantes = data.map((o) => `${carpeta}/${o.name}`).filter((ruta) => ruta !== vigente);
+  if (sobrantes.length) await sb.storage.from("logos").remove(sobrantes);
+}
+
 /** Actualiza columnas editables del taller y refresca la barra superior. */
 async function guardarTaller(cambios) {
   const t = must(await sb.from("talleres").update(cambios).eq("id", state.taller.id).select(TALLER_COLS).single());
@@ -63,13 +72,14 @@ function logoCard() {
     quitarBtn.hidden = !t.logo_path;
   }
 
+  let busy = false;
   const error = (e) => { msg.textContent = e.userMessage || errMsg(e); msg.hidden = false; };
-  const ocupado = (on) => { subirLbl.classList.toggle("disabled", on); quitarBtn.disabled = on; fileIn.disabled = on; };
+  const ocupado = (on) => { busy = on; subirLbl.classList.toggle("disabled", on); quitarBtn.disabled = on; fileIn.disabled = on; };
 
   fileIn.addEventListener("change", async () => {
     const file = fileIn.files[0];
     fileIn.value = "";
-    if (!file) return;
+    if (!file || busy) return; // una subida a la vez
     msg.hidden = true;
     const ext = LOGO_TIPOS[file.type];
     if (!ext) return error(userError("Formato no permitido. Usa una imagen PNG, JPG o WEBP."));
@@ -77,6 +87,7 @@ function logoCard() {
 
     const anterior = state.taller.logo_path;
     const ruta = `${state.taller.id}/logo-${Date.now()}.${ext}`; // timestamp: evita que el navegador muestre el logo viejo en caché
+    // (al terminar se borra el anterior y cualquier otro archivo sobrante de la carpeta)
     ocupado(true);
     subirLbl.textContent = "Subiendo…";
     try {
@@ -87,7 +98,7 @@ function logoCard() {
         await sb.storage.from("logos").remove([ruta]); // no dejar archivos sin usar
         throw e;
       }
-      if (anterior) await sb.storage.from("logos").remove([anterior]);
+      await limpiarLogos(ruta);
       toast(anterior ? "Logo reemplazado" : "Logo subido");
     } catch (e) {
       error(e);
@@ -99,12 +110,12 @@ function logoCard() {
 
   quitarBtn.addEventListener("click", async () => {
     const anterior = state.taller.logo_path;
-    if (!anterior || !confirm("¿Quitar el logo del taller? Se mostrarán las iniciales en su lugar.")) return;
+    if (busy || !anterior || !confirm("¿Quitar el logo del taller? Se mostrarán las iniciales en su lugar.")) return;
     msg.hidden = true;
     ocupado(true);
     try {
       await guardarTaller({ logo_path: null });
-      await sb.storage.from("logos").remove([anterior]);
+      await limpiarLogos(null);
       toast("Logo quitado");
     } catch (e) {
       error(e);
