@@ -12,6 +12,7 @@ App web para talleres mecánicos: clientes, vehículos, órdenes de trabajo con 
 - **Mi taller:** el dueño edita nombre, RUC, dirección, teléfono y correo del taller, y sube su logo al bucket público `logos` (PNG/JPG/WEBP, máx. 1 MB, ruta `logos/<taller_id>/logo-<timestamp>.<ext>`). El logo y los datos aparecen en la barra superior y en el encabezado de la orden impresa; sin logo se usan las iniciales del taller.
 - **Cliente de Supabase:** `@supabase/supabase-js@2.45.4` desde jsDelivr, con versión fija.
 - **Multi-taller:** cada usuario pertenece a un taller. Las políticas RLS hacen que cada taller vea solo sus datos. El frontend **nunca** envía `taller_id` ni `numero`: los asigna la base.
+- **Acceso:** correo y contraseña, o "Continuar con Google" (proveedor Google activado en Supabase → Authentication → Providers). Las cuentas creadas con Google no traen nombre de taller (el trigger lo crea como "Mi taller"), así que la app pide el nombre en una pantalla de bienvenida antes de dejar usarla. Si la sesión guardada es de un usuario que ya no existe o sin taller, la app cierra la sesión y vuelve al login con "Tu sesión expiró".
 - **Demo:** al registrarse, un trigger crea el taller con `plan = 'demo'` y `trial_ends_at = now() + 7 días`. Cuando la demo vence, RLS bloquea los datos de trabajo y la app muestra la pantalla "Tu demo terminó". Los datos no se borran.
 
 ## Configuración (`config.js`)

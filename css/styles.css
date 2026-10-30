@@ -147,6 +147,18 @@ textarea.input { resize: vertical; min-height: 84px; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: #EEEAE3; border-radius: 10px; }
 .tabs button { min-height: 44px; border: 0; border-radius: 8px; background: transparent; font: 600 14px var(--font-b); color: var(--muted); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--card); color: var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+/* Botón de Google según sus guías de marca: fondo blanco, borde gris, texto oscuro, logo "G" a color */
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%;
+  min-height: 46px; padding: 10px 16px; border: 1px solid #747775; border-radius: 10px;
+  background: #FFFFFF; color: #1F1F1F; font: 600 15px var(--font-b); cursor: pointer;
+}
+.btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
+.btn-google:hover { background: #F8F9FA; }
+.btn-google:focus-visible { outline: 3px solid rgba(194, 65, 12, .35); outline-offset: 2px; }
+.btn-google:disabled { opacity: .6; cursor: wait; }
+.divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .auth-foot { text-align: center; font-size: 14px; color: var(--muted-inv); }
 .auth-foot a { color: var(--accent-light); }
 .foot-credit { text-align: center; font-size: 12px; color: var(--muted-inv); opacity: .8; }
@@ -359,6 +371,7 @@ button.result:hover { border-color: var(--accent); }
 .locked-card .stack { width: 100%; margin-top: 8px; }
 .locked-taller { font-weight: 600; color: var(--muted); }
 .locked-card .foot-credit { color: var(--muted); }
+.welcome-card form { width: 100%; text-align: left; }
 
 /* ---------- Páginas legales (privacidad, términos) ---------- */
 .legal-head { background: var(--dark); color: var(--ink-inv); }

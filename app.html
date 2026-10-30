@@ -10,6 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/styles.css">
+<!-- URL de llegada (antes de que Supabase la limpie): trae el error si el inicio con Google se canceló o falló -->
+<script>window.__urlInicial = location.href;</script>
 </head>
 <body class="app-page">
 
@@ -52,6 +54,8 @@
     <footer class="app-foot">Desarrollado por Zynthea Solutions</footer>
   </div>
 </div>
+
+<div id="welcome" class="locked" hidden></div>
 
 <div id="locked" class="locked" hidden>
   <div class="card locked-card">

@@ -46,6 +46,35 @@ function onSubmit(form, fn) {
   });
 }
 
+// ---------- Continuar con Google ----------
+for (const btn of document.querySelectorAll("[data-google]")) {
+  btn.addEventListener("click", async () => {
+    setMsg("");
+    btn.disabled = true;
+    const label = btn.querySelector("span");
+    const texto = label.textContent;
+    label.textContent = "Abriendo Google…";
+    // Si todo va bien, el navegador sale hacia Google y vuelve a app.html con la sesión
+    const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: appUrl } });
+    if (error) {
+      setMsg("No se pudo abrir el inicio de sesión con Google. Inténtalo de nuevo o usa tu correo y contraseña.");
+      btn.disabled = false;
+      label.textContent = texto;
+    }
+  });
+}
+
+// Avisos al volver de Google o de una sesión inválida (vienen en la URL desde app.html)
+const aviso = new URLSearchParams(location.search);
+if (aviso.get("sesion") === "expirada") setMsg("Tu sesión expiró, vuelve a ingresar.", "warn");
+const oauth = aviso.get("oauth_error");
+if (oauth) {
+  setMsg(oauth === "access_denied"
+    ? "Cancelaste el inicio de sesión con Google. Puedes intentarlo de nuevo o usar tu correo."
+    : "No se pudo iniciar sesión con Google. Inténtalo de nuevo o usa tu correo y contraseña.");
+}
+if (aviso.has("sesion") || oauth) history.replaceState(null, "", location.pathname + location.hash);
+
 $("tab-login").addEventListener("click", () => show("login"));
 $("tab-signup").addEventListener("click", () => show("signup"));
 $("go-reset").addEventListener("click", () => show("reset"));

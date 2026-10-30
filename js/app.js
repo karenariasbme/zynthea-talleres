@@ -1,7 +1,7 @@
 import { sb } from "./sb.js";
-import { h, errMsg, WHATSAPP, PLANES_URL, diasRestantes } from "./util.js";
+import { h, errMsg, must, val, WHATSAPP, PLANES_URL, diasRestantes } from "./util.js";
 import { state } from "./state.js";
-import { loading, errorBox, tallerLogo } from "./ui.js";
+import { loading, errorBox, tallerLogo, asyncForm, field, input, userError } from "./ui.js";
 import * as inicio from "./views/inicio.js";
 import * as nueva from "./views/nueva.js";
 import * as orden from "./views/orden.js";
@@ -83,31 +83,87 @@ function showLocked(t) {
   $("lockedWa").href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
 }
 
+/** Código de error que devuelve Google/Supabase en la URL al cancelar o fallar el inicio de sesión. */
+function errorOAuth(url) {
+  const u = new URL(url);
+  return new URLSearchParams(u.hash.slice(1)).get("error") || u.searchParams.get("error");
+}
+
+/** ¿El error indica que la sesión ya no es válida (usuario borrado, token inválido)? Un fallo de red no cuenta. */
+const sesionInvalida = (e) =>
+  [401, 403].includes(e?.status) || /user_not_found|bad_jwt|session_not_found|invalid.*(jwt|token)|user.*not.*exist/i.test(`${e?.code} ${e?.message}`);
+
+/** Cierra la sesión local y vuelve al login con el aviso de sesión expirada. */
+async function expulsar() {
+  try { await sb.auth.signOut({ scope: "local" }); } catch { /* la sesión ya no existe en el servidor */ }
+  location.replace("index.html?sesion=expirada");
+}
+
+/** Cuentas nuevas con Google: el taller se crea como "Mi taller". Pide el nombre antes de usar la app. */
+function bienvenida(t) {
+  return new Promise((resolve) => {
+    const form = asyncForm({ class: "stack" }, [
+      field("Nombre del taller *", input({ name: "nombre", required: true, maxlength: 120, autocomplete: "organization",
+        placeholder: "Ej.: Mecánica Automotriz Los Andes" })),
+      field("Teléfono", input({ name: "telefono", type: "tel", maxlength: 20 })),
+      field("Dirección", input({ name: "direccion", maxlength: 200 })),
+      h("p", { class: "note" }, "Puedes subir tu logo luego en Mi taller."),
+      h("button", { class: "btn primary block", type: "submit" }, "Empezar"),
+    ], async (fd) => {
+      const nombre = val(fd, "nombre");
+      if (!nombre || nombre.toLowerCase() === "mi taller") throw userError("Escribe el nombre de tu taller.");
+      const nuevo = must(await sb.from("talleres")
+        .update({ nombre, telefono: val(fd, "telefono"), direccion: val(fd, "direccion") })
+        .eq("id", t.id).select(TALLER_COLS).single());
+      $("welcome").hidden = true;
+      resolve(nuevo);
+    });
+    $("welcome").replaceChildren(
+      h("div", { class: "card locked-card welcome-card" },
+        h("h1", {}, "¡Bienvenido!"),
+        h("p", {}, "¿Cómo se llama tu taller? Aparecerá en la app y en tus órdenes de trabajo."),
+        form,
+        h("button", { class: "link", type: "button", onclick: logout }, "Cerrar sesión"),
+        h("p", { class: "foot-credit" }, "Desarrollado por Zynthea Solutions")));
+    $("welcome").hidden = false;
+    $("welcome").querySelector("input").focus();
+  });
+}
+
+const TALLER_COLS = "id,nombre,plan,trial_ends_at,ruc,direccion,telefono,correo,logo_path";
+
 async function init() {
+  const errGoogle = errorOAuth(window.__urlInicial || location.href);
+  if (errGoogle) return location.replace(`index.html?oauth_error=${encodeURIComponent(errGoogle)}`);
+
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return location.replace("index.html");
+
+  // La sesión guardada puede ser de un usuario que ya no existe: validarla con el servidor
+  const { data: ud, error: ue } = await sb.auth.getUser();
+  if (ue || !ud?.user) {
+    if (!ue || sesionInvalida(ue)) return expulsar();
+    throw ue; // fallo de red: se muestra el error con "Reintentar"
+  }
+
+  const { data: t, error } = await sb.from("talleres").select(TALLER_COLS).maybeSingle();
+  if (error) {
+    if (sesionInvalida(error)) return expulsar();
+    throw error;
+  }
+  if (!t) return expulsar(); // usuario sin taller
 
   sb.auth.onAuthStateChange((event, s) => {
     if (event === "SIGNED_OUT" || !s) location.replace("index.html");
   });
   $("logoutBtn").addEventListener("click", logout);
   $("lockedLogout").addEventListener("click", logout);
-
-  const { data: t, error } = await sb.from("talleres")
-    .select("id,nombre,plan,trial_ends_at,ruc,direccion,telefono,correo,logo_path").maybeSingle();
-  $("splash").replaceChildren();
-  if (error || !t) {
-    $("splash").append(
-      h("p", {}, error ? errMsg(error) : "No encontramos el taller de tu cuenta. Escríbenos por WhatsApp y lo revisamos."),
-      h("button", { class: "btn primary", type: "button", onclick: () => location.reload() }, "Reintentar"),
-      h("button", { class: "link light", type: "button", onclick: logout }, "Cerrar sesión"));
-    return;
-  }
-  state.taller = t;
   $("splash").hidden = true;
 
   const vencida = t.plan === "demo" && t.trial_ends_at && new Date(t.trial_ends_at) <= new Date();
   if (vencida) return showLocked(t);
+
+  state.taller = t.nombre.trim().toLowerCase() === "mi taller" ? await bienvenida(t) : t;
 
   updateChrome();
   $("shell").hidden = false;
