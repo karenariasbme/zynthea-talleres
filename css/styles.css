@@ -365,7 +365,7 @@ button.result:hover { border-color: var(--accent); }
   @page { margin: 14mm; }
   body { background: #fff; color: #000; }
   .sidenav, .topbar, .no-print, .page-head, .toast, .app-foot { display: none !important; }
-  .shell, .shell:not([hidden]) { display: block; }
+  .shell, .shell:not([hidden]) { display: block; background: none; }
   .main-col, .view { padding: 0; min-height: 0; }
   .print-doc { border: 0; padding: 0; }
 }
