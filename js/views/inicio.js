@@ -4,7 +4,8 @@ import { pageHead, orderCard, empty } from "../ui.js";
 
 export async function render(box) {
   const [ra, ru] = await Promise.all([
-    sb.from("historial_ordenes").select("*").is("fecha_salida", null).order("fecha_ingreso", { ascending: false }),
+    sb.from("historial_ordenes").select("*").is("fecha_salida", null)
+      .order("fecha_ingreso", { ascending: false }).order("numero", { ascending: false }),
     sb.from("historial_ordenes").select("*").order("numero", { ascending: false }).limit(10),
   ]);
   const abiertas = must(ra);

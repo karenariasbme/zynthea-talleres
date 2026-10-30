@@ -17,7 +17,7 @@ export async function render(box, inicial) {
     if (placa) conds.push(`placa.ilike."*${placa}*"`);
     try {
       const data = must(await sb.from("historial_ordenes").select("*").or(conds.join(","))
-        .order("fecha_ingreso", { ascending: false }).limit(500));
+        .order("fecha_ingreso", { ascending: false }).order("numero", { ascending: false }).limit(500));
       pintar(results, data);
     } catch (e) {
       results.replaceChildren(errorBox(errMsg(e)));

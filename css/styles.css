@@ -265,7 +265,8 @@ textarea.input { resize: vertical; min-height: 84px; }
 .print-doc { display: flex; flex-direction: column; gap: 20px; overflow-wrap: anywhere; }
 .doc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 2px solid var(--bg); padding-bottom: 14px; }
 .doc-taller { font-family: var(--font-d); font-size: 22px; font-weight: 700; color: var(--bg); }
-.doc-code { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.doc-code { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+@media (min-width: 640px) { .doc-code { align-items: flex-end; } }
 .doc-code span:first-child { font-family: var(--font-m); font-size: 24px; font-weight: 500; }
 .doc-cols { display: grid; grid-template-columns: 1fr; gap: 20px; }
 @media (min-width: 640px) { .doc-cols { grid-template-columns: 1fr 1fr; } }
