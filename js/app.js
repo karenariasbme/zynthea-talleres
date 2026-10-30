@@ -1,13 +1,14 @@
 import { sb } from "./sb.js";
-import { h, errMsg, WHATSAPP } from "./util.js";
+import { h, errMsg, WHATSAPP, PLANES_URL, diasRestantes } from "./util.js";
 import { state } from "./state.js";
-import { loading, errorBox } from "./ui.js";
+import { loading, errorBox, tallerLogo } from "./ui.js";
 import * as inicio from "./views/inicio.js";
 import * as nueva from "./views/nueva.js";
 import * as orden from "./views/orden.js";
 import * as clientes from "./views/clientes.js";
 import * as vehiculos from "./views/vehiculos.js";
 import * as historial from "./views/historial.js";
+import * as taller from "./views/taller.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,6 +18,7 @@ const routes = {
   clientes: clientes.render,
   vehiculos: vehiculos.render,
   historial: historial.render,
+  taller: taller.render,
   orden: orden.renderDetalle,
   cerrar: orden.renderCerrar,
 };
@@ -51,25 +53,33 @@ async function logout() {
   location.replace("index.html");
 }
 
-function showLocked(taller) {
-  $("shell").hidden = true;
-  $("locked").hidden = false;
-  $("lockedTaller").textContent = taller.nombre;
-  const text = `Hola Karen, mi demo del Sistema para Talleres terminó y quiero activar mi plan para el taller "${taller.nombre}".`;
-  $("lockedWa").href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
-}
+/** Logo, nombre del taller y aviso de demo en la barra superior y el menú. */
+function updateChrome() {
+  const t = state.taller;
+  $("tallerLogo").replaceChildren(tallerLogo(t, "sm"));
+  $("tallerName").textContent = t.nombre;
+  document.title = `${t.nombre} · Sistema para Talleres`;
 
-function showTrialBanner(taller) {
   const banner = $("trialBanner");
-  if (taller.plan !== "demo") return;
-  const ms = new Date(taller.trial_ends_at) - Date.now();
-  const days = Math.max(1, Math.ceil(ms / 86400000));
-  banner.hidden = false;
+  const demo = t.plan === "demo";
+  banner.hidden = !demo;
+  $("activarBtn").hidden = !demo;
+  if (!demo) return;
+  const days = diasRestantes(t);
   banner.classList.toggle("warn", days <= 2);
   banner.replaceChildren(
     h("span", {}, `Demo: te quedan ${days} ${days === 1 ? "día" : "días"}`),
-    h("a", { href: "https://karenariasbme.github.io/KarenArias/talleres/#planes" }, "Activar plan →"));
-  $("activarBtn").hidden = false;
+    h("a", { href: PLANES_URL }, "Activar plan →"));
+}
+state.updateChrome = updateChrome;
+
+function showLocked(t) {
+  $("shell").hidden = true;
+  $("locked").hidden = false;
+  $("lockedLogo").replaceChildren(tallerLogo(t, "lg"));
+  $("lockedTaller").textContent = t.nombre;
+  const text = `Hola Karen, mi demo del Sistema para Talleres terminó y quiero activar mi plan para el taller "${t.nombre}".`;
+  $("lockedWa").href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
 }
 
 async function init() {
@@ -82,24 +92,23 @@ async function init() {
   $("logoutBtn").addEventListener("click", logout);
   $("lockedLogout").addEventListener("click", logout);
 
-  const { data: taller, error } = await sb.from("talleres").select("id,nombre,plan,trial_ends_at").maybeSingle();
+  const { data: t, error } = await sb.from("talleres")
+    .select("id,nombre,plan,trial_ends_at,ruc,direccion,telefono,correo,logo_path").maybeSingle();
   $("splash").replaceChildren();
-  if (error || !taller) {
+  if (error || !t) {
     $("splash").append(
       h("p", {}, error ? errMsg(error) : "No encontramos el taller de tu cuenta. Escríbenos por WhatsApp y lo revisamos."),
       h("button", { class: "btn primary", type: "button", onclick: () => location.reload() }, "Reintentar"),
       h("button", { class: "link light", type: "button", onclick: logout }, "Cerrar sesión"));
     return;
   }
-  state.taller = taller;
+  state.taller = t;
   $("splash").hidden = true;
 
-  const vencida = taller.plan === "demo" && taller.trial_ends_at && new Date(taller.trial_ends_at) <= new Date();
-  if (vencida) return showLocked(taller);
+  const vencida = t.plan === "demo" && t.trial_ends_at && new Date(t.trial_ends_at) <= new Date();
+  if (vencida) return showLocked(t);
 
-  $("tallerName").textContent = taller.nombre;
-  document.title = `${taller.nombre} · Sistema para Talleres`;
-  showTrialBanner(taller);
+  updateChrome();
   $("shell").hidden = false;
   window.addEventListener("hashchange", route);
   route();

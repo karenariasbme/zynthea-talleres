@@ -1,4 +1,21 @@
+import { sb } from "./sb.js";
 import { h, errMsg, formatPlaca, fmtFecha } from "./util.js";
+
+// ---------- Logo del taller ----------
+export const logoUrl = (path) => (path ? sb.storage.from("logos").getPublicUrl(path).data.publicUrl : null);
+
+export function iniciales(nombre) {
+  const w = (nombre || "").trim().split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] || "T") + (w[1]?.[0] || "")).toUpperCase();
+}
+
+/** Logo del taller, o sus iniciales en un círculo naranja si no tiene logo. */
+export function tallerLogo(t, size = "sm") {
+  const url = logoUrl(t?.logo_path);
+  return url
+    ? h("img", { class: `logo ${size}`, src: url, alt: `Logo de ${t.nombre}` })
+    : h("span", { class: `logo initials ${size}`, "aria-hidden": "true" }, iniciales(t?.nombre));
+}
 
 export const loading = (text = "Cargando…") =>
   h("div", { class: "state" }, h("span", { class: "spinner", "aria-hidden": "true" }), text);

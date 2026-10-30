@@ -1,19 +1,20 @@
 import { sb } from "../sb.js";
-import { h, must, normPlaca, formatPlaca, fmtFecha, errMsg } from "../util.js";
+import { h, must, normPlaca, formatPlaca, fmtFecha, errMsg, limpiarBusqueda, parecePlaca } from "../util.js";
 import { pageHead, input, empty, loading, errorBox, estadoBadge } from "../ui.js";
-import { limpiarBusqueda } from "./clientes.js";
+
+const AYUDA = "Escribe una placa, el nombre o la cédula/RUC del cliente para ver su historial.";
 
 export async function render(box, inicial) {
   const results = h("div", { class: "stack-lg" });
-  const q = input({ type: "search", name: "q", placeholder: "Placa o nombre del cliente", required: true,
-    "aria-label": "Buscar por placa o cliente", value: inicial ? formatPlaca(inicial) : "" });
+  const q = input({ type: "search", name: "q", placeholder: "Placa, cliente o cédula/RUC", required: true,
+    "aria-label": "Buscar por placa, cliente o cédula", value: parecePlaca(inicial) ? formatPlaca(inicial) : inicial || "" });
 
   async function buscar() {
     const texto = limpiarBusqueda(q.value);
-    if (!texto) return results.replaceChildren(empty("Escribe una placa o el nombre del cliente para ver su historial."));
+    if (!texto) return results.replaceChildren(empty(AYUDA));
     results.replaceChildren(loading("Buscando…"));
     const placa = normPlaca(texto).replace(/[^A-Z0-9]/g, "");
-    const conds = [`cliente_nombre.ilike."*${texto}*"`];
+    const conds = [`cliente_nombre.ilike."*${texto}*"`, `cliente_cedula_ruc.ilike."*${texto}*"`];
     if (placa) conds.push(`placa.ilike."*${placa}*"`);
     try {
       const data = must(await sb.from("historial_ordenes").select("*").or(conds.join(","))
@@ -29,7 +30,7 @@ export async function render(box, inicial) {
 
   box.append(pageHead("Historial", "Todas las órdenes de un vehículo o de un cliente"), form, results);
   if (inicial) await buscar();
-  else results.replaceChildren(empty("Escribe una placa o el nombre del cliente para ver su historial."));
+  else results.replaceChildren(empty(AYUDA));
 }
 
 /** Agrupa las órdenes por vehículo (ya vienen ordenadas por fecha, de la más reciente a la más antigua). */

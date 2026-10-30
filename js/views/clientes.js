@@ -1,9 +1,6 @@
 import { sb } from "../sb.js";
-import { h, must, val, toast, errMsg } from "../util.js";
+import { h, must, val, toast, errMsg, limpiarBusqueda } from "../util.js";
 import { pageHead, field, input, openDialog, userError, empty, loading, errorBox } from "../ui.js";
-
-/** Quita los caracteres con significado especial en los filtros de PostgREST. */
-export const limpiarBusqueda = (q) => q.replace(/[,()*%\\:"']/g, " ").trim();
 
 export async function render(box) {
   const list = h("div", { class: "list" });

@@ -1,7 +1,7 @@
 import { sb } from "../sb.js";
 import { h, must, val, formatPlaca, fmtFecha, toLocalInput, fromLocalInput, toast } from "../util.js";
 import { state } from "../state.js";
-import { pageHead, field, input, textarea, asyncForm, userError, estadoBadge, empty } from "../ui.js";
+import { pageHead, field, input, textarea, asyncForm, userError, estadoBadge, empty, tallerLogo } from "../ui.js";
 
 async function cargar(id) {
   if (!id) return null;
@@ -16,12 +16,20 @@ const dato = (label, value) =>
 
 /** Datos de la orden en formato documento (también es la vista imprimible). */
 export function ordenDoc(o) {
+  const t = state.taller || {};
   return h("article", { class: "card print-doc" },
     h("header", { class: "doc-head" },
-      h("div", {},
-        h("p", { class: "doc-taller" }, state.taller?.nombre || ""),
-        h("p", { class: "muted" }, "Orden de trabajo")),
-      h("div", { class: "doc-code" }, h("span", {}, o.codigo), estadoBadge(o))),
+      h("div", { class: "doc-brand" },
+        tallerLogo(t, "doc"),
+        h("div", {},
+          h("p", { class: "doc-taller" }, t.nombre || ""),
+          t.ruc && h("p", { class: "doc-line" }, `RUC: ${t.ruc}`),
+          t.direccion && h("p", { class: "doc-line" }, t.direccion),
+          (t.telefono || t.correo) && h("p", { class: "doc-line" }, [t.telefono, t.correo].filter(Boolean).join(" · ")))),
+      h("div", { class: "doc-code" },
+        h("span", { class: "doc-kind" }, "Orden de trabajo"),
+        h("span", { class: "doc-num" }, o.codigo),
+        estadoBadge(o))),
     h("div", { class: "doc-cols" },
       h("section", {},
         h("h3", {}, "Cliente"),
@@ -56,7 +64,7 @@ export function ordenDoc(o) {
     h("footer", { class: "doc-foot" },
       h("div", { class: "firma" }, "Firma del cliente"),
       h("div", { class: "firma" }, "Firma del taller")),
-    h("p", { class: "doc-gen" }, `Impreso el ${fmtFecha(new Date().toISOString())} · Sistema para Talleres · Zynthea Solutions`));
+    h("p", { class: "doc-gen" }, `Impreso el ${fmtFecha(new Date().toISOString())} · Desarrollado por Zynthea Solutions`));
 }
 
 export async function renderDetalle(box, id) {

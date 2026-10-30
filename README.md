@@ -8,7 +8,8 @@ App web para talleres mecánicos: clientes, vehículos, órdenes de trabajo con 
 ## Cómo funciona
 
 - **Frontend:** HTML, CSS y JavaScript vanilla (ES modules), sin build. Se publica tal cual con GitHub Pages desde la rama `main`.
-- **Backend:** Supabase (PostgreSQL + Auth + Row Level Security). El esquema está en [`sql/001_esquema.sql`](sql/001_esquema.sql).
+- **Backend:** Supabase (PostgreSQL + Auth + Row Level Security + Storage). Esquema en [`sql/001_esquema.sql`](sql/001_esquema.sql); datos y logo del taller en [`sql/002_perfil_taller.sql`](sql/002_perfil_taller.sql) (ejecutar en ese orden).
+- **Mi taller:** el dueño edita nombre, RUC, dirección, teléfono y correo del taller, y sube su logo al bucket público `logos` (PNG/JPG/WEBP, máx. 1 MB, ruta `logos/<taller_id>/logo-<timestamp>.<ext>`). El logo y los datos aparecen en la barra superior y en el encabezado de la orden impresa; sin logo se usan las iniciales del taller.
 - **Cliente de Supabase:** `@supabase/supabase-js@2.45.4` desde jsDelivr, con versión fija.
 - **Multi-taller:** cada usuario pertenece a un taller. Las políticas RLS hacen que cada taller vea solo sus datos. El frontend **nunca** envía `taller_id` ni `numero`: los asigna la base.
 - **Demo:** al registrarse, un trigger crea el taller con `plan = 'demo'` y `trial_ends_at = now() + 7 días`. Cuando la demo vence, RLS bloquea los datos de trabajo y la app muestra la pantalla "Tu demo terminó". Los datos no se borran.
@@ -35,15 +36,17 @@ Sin esto, los enlaces de confirmación de correo y de recuperación de contrase�
 index.html          Login, registro (demo 7 días) y recuperación de contraseña
 app.html            App protegida (requiere sesión)
 config.js           URL y anon key de Supabase
-css/styles.css      Estilos (mobile-first, identidad Zynthea)
+css/styles.css      Estilos (mobile-first, paleta "taller mecánico": grafito + naranja)
 js/sb.js            Cliente de Supabase
 js/util.js          Ayudas: creación segura de DOM, placas, fechas (America/Guayaquil), errores en español
 js/ui.js            Componentes: tarjetas, formularios, ventanas, estados de carga/vacío
 js/state.js         Estado compartido (taller actual)
 js/login.js         Lógica de index.html
 js/app.js           Arranque, sesión, demo/bloqueo y rutas (#inicio, #nueva, #orden/<id>, …)
-js/views/           Pantallas: inicio, nueva orden, detalle/cerrar orden, clientes, vehículos, historial
+js/views/           Pantallas: inicio (con buscador global), nueva orden, detalle/cerrar orden,
+                    clientes, vehículos, historial, mi taller (datos, logo, plan y cuenta)
 sql/001_esquema.sql Esquema de la base (tablas, RLS, triggers)
+sql/002_perfil_taller.sql Datos de la empresa, logo y bucket "logos"
 ```
 
 Todo el texto que viene de la base se pinta con nodos de texto (`textContent`), nunca con `innerHTML`.

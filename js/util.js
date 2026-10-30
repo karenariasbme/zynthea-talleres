@@ -38,8 +38,22 @@ export function val(fd, name) {
   return v === "" ? null : v;
 }
 
+/** Quita los caracteres con significado especial en los filtros de PostgREST. */
+export const limpiarBusqueda = (q) => (q || "").replace(/[,()*%\\:"']/g, " ").trim();
+
+// ---------- Plan ----------
+export const PLANES = { demo: "Demo gratuita", basico: "Básico", estandar: "Estándar", profesional: "Profesional", premium: "Premium" };
+
+/** Días que le quedan a la demo (mínimo 1 mientras esté vigente). */
+export function diasRestantes(taller) {
+  const ms = new Date(taller.trial_ends_at) - Date.now();
+  return Math.max(1, Math.ceil(ms / 86400000));
+}
+
 // ---------- Placas ----------
 export const normPlaca = (p) => (p || "").toUpperCase().replace(/[\s-]/g, "");
+/** ¿El texto tiene forma de placa (letras + números, sin espacios internos)? */
+export const parecePlaca = (t) => /^[A-Za-z]{2,3}[\s-]?\d{3,4}$/.test((t || "").trim());
 
 /** En la base se guardan sin guion (ABC1234); se muestran como ABC-1234. */
 export function formatPlaca(p) {
