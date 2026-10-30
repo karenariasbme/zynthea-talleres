@@ -360,6 +360,25 @@ button.result:hover { border-color: var(--accent); }
 .locked-taller { font-weight: 600; color: var(--muted); }
 .locked-card .foot-credit { color: var(--muted); }
 
+/* ---------- Páginas legales (privacidad, términos) ---------- */
+.legal-head { background: var(--dark); color: var(--ink-inv); }
+.legal-head .wrap-legal { padding-top: 28px; padding-bottom: 36px; }
+.legal-head h1 { font-size: clamp(36px, 9vw, 54px); margin-top: 18px; }
+.legal-head .lead { color: var(--muted-inv); margin-top: 8px; }
+.legal-head a { color: var(--accent-light); text-decoration: none; }
+.legal-head a.brand { color: var(--ink-inv); }
+.wrap-legal { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.legal { margin-top: -18px; margin-bottom: 32px; padding: 24px 20px; }
+.legal h2 { font-size: 24px; margin: 28px 0 10px; color: var(--accent); }
+.legal h2:first-child { margin-top: 0; }
+.legal p, .legal li { font-size: 16px; line-height: 1.65; }
+.legal p + p, .legal ul + p { margin-top: 10px; }
+.legal ul { margin: 8px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.legal .updated { font-size: 14px; color: var(--muted); }
+.legal-foot { text-align: center; font-size: 13px; color: var(--muted); padding: 0 16px 32px; }
+.legal-foot a { color: var(--accent); }
+@media (min-width: 640px) { .legal { padding: 36px 40px; } }
+
 /* ---------- Impresión ---------- */
 @media print {
   @page { margin: 14mm; }
