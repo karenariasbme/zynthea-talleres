@@ -79,7 +79,8 @@ $("tab-login").addEventListener("click", () => show("login"));
 $("tab-signup").addEventListener("click", () => show("signup"));
 $("go-reset").addEventListener("click", () => show("reset"));
 $("back-login").addEventListener("click", () => show("login"));
-if (location.hash === "#registro") show("signup");
+// Enlaces de la landing (?registro=1) abren directamente "Probar gratis 7 días"
+if (aviso.get("registro") === "1" || location.hash === "#registro") show("signup");
 
 onSubmit(forms.login, async (fd) => {
   const { error } = await sb.auth.signInWithPassword({
