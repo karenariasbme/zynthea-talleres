@@ -112,6 +112,12 @@ async function init() {
   updateChrome();
   $("shell").hidden = false;
   window.addEventListener("hashchange", route);
+  // Tocar la sección en la que ya estás la vuelve a cargar (p. ej. "Nueva orden" después de crear una)
+  for (const a of document.querySelectorAll("#nav a")) {
+    a.addEventListener("click", (e) => {
+      if (a.getAttribute("href") === location.hash) { e.preventDefault(); route(); }
+    });
+  }
   route();
 }
 
