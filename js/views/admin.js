@@ -51,7 +51,12 @@ export async function render(box, arg) {
     TABS.map(([k, n]) => h("a", { href: `#admin/${k}`, "aria-current": k === actual ? "page" : null, "data-tab": k },
       n, h("span", { class: "count", hidden: true }))));
 
-  box.append(pageHead("Panel de administración", "Demos, clientes, planes e invitaciones"), tabs, contenido);
+  const salir = h("button", { class: "btn small ghost", type: "button", onclick: async () => {
+    salir.disabled = true;
+    await sb.auth.signOut();
+    location.replace("index.html");
+  } }, "Salir");
+  box.append(pageHead("Panel de administración", "Demos, clientes, planes e invitaciones", salir), tabs, contenido);
 
   // Contador de invitaciones pendientes (no detiene la pantalla si falla)
   const contar = async () => {

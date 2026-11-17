@@ -554,9 +554,11 @@ revoke all on public.presupuestos, public.presupuesto_items, public.presupuestos
 grant select, insert, update, delete on public.presupuestos, public.presupuesto_items, public.reservas to authenticated;
 grant select on public.presupuestos_totales, public.ordenes_costos to authenticated;
 
--- Endurecer lo del 003: sin TRUNCATE (se salta RLS), TRIGGER ni REFERENCES
-revoke truncate, trigger, references on public.orden_items, public.ordenes_totales from authenticated;
-revoke all on public.orden_items, public.ordenes_totales from anon;
+-- Endurecer: TRUNCATE se salta RLS. Nadie de la app necesita TRUNCATE, TRIGGER ni REFERENCES
+-- en ninguna tabla o vista de public (incluye orden_items del 003 y las tablas del 001).
+revoke truncate, trigger, references on all tables in schema public from anon, authenticated;
+-- anon no lee ninguna tabla ni vista: lo público pasa solo por las funciones SECURITY DEFINER de abajo.
+revoke all on all tables in schema public from anon;
 
 -- Funciones: nada para nadie y luego lo justo
 revoke execute on function
