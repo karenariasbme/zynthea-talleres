@@ -1,5 +1,5 @@
 import { sb } from "./sb.js";
-import { h, errMsg, must, val, WHATSAPP, PLANES_URL, diasRestantes } from "./util.js";
+import { h, errMsg, must, val, WHATSAPP, PLANES_URL, diasRestantes, tieneEstandar } from "./util.js";
 import { state } from "./state.js";
 import { loading, errorBox, tallerLogo, asyncForm, field, input, userError } from "./ui.js";
 import * as inicio from "./views/inicio.js";
@@ -10,6 +10,9 @@ import * as vehiculos from "./views/vehiculos.js";
 import * as historial from "./views/historial.js";
 import * as taller from "./views/taller.js";
 import * as admin from "./views/admin.js";
+import * as presupuestos from "./views/presupuestos.js";
+import * as agenda from "./views/agenda.js";
+import * as reportes from "./views/reportes.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,9 +26,16 @@ let routes = {
   orden: orden.renderDetalle,
   cerrar: orden.renderCerrar,
   editar: orden.renderEditar,
+  presupuestos: presupuestos.renderLista,
+  "nuevo-presupuesto": presupuestos.renderNuevo,
+  presupuesto: presupuestos.renderDetalle,
+  "editar-presupuesto": presupuestos.renderEditar,
+  agenda: agenda.render,
+  reportes: reportes.render,
 };
 // Pantallas internas que resaltan una sección del menú
-const navOf = { orden: "inicio", cerrar: "inicio", editar: "inicio" };
+const navOf = { orden: "inicio", cerrar: "inicio", editar: "inicio",
+  "nuevo-presupuesto": "presupuestos", presupuesto: "presupuestos", "editar-presupuesto": "presupuestos" };
 let inicioRuta = "inicio";
 
 let seq = 0;
@@ -33,10 +43,16 @@ async function route() {
   const [name, ...rest] = location.hash.replace(/^#/, "").split("/");
   const key = routes[name] ? name : inicioRuta;
   const arg = decodeURIComponent(rest.join("/"));
+  let enMovil = false;
   for (const a of document.querySelectorAll("#nav a")) {
-    if (a.dataset.route === (navOf[key] || key)) a.setAttribute("aria-current", "page");
-    else a.removeAttribute("aria-current");
+    if (a.dataset.route === (navOf[key] || key)) {
+      a.setAttribute("aria-current", "page");
+      enMovil = a.hasAttribute("data-movil");
+    } else a.removeAttribute("aria-current");
   }
+  // En el celular, las secciones que no están en la barra se marcan en "Más"
+  if (enMovil) $("navMas").removeAttribute("aria-current");
+  else $("navMas").setAttribute("aria-current", "page");
   const view = $("view");
   const token = ++seq;
   view.replaceChildren(loading());
@@ -75,6 +91,34 @@ function updateChrome() {
     h("a", { href: PLANES_URL }, "Activar plan →"));
 }
 state.updateChrome = updateChrome;
+
+/** Secciones del Plan Estándar: en la demo y el Básico se ven con candado (la pantalla muestra "Mejorar plan"). */
+function marcarEstandar() {
+  const bloq = !tieneEstandar(state.taller);
+  for (const a of document.querySelectorAll("#nav a[data-estandar]")) a.classList.toggle("nav-lock", bloq);
+}
+
+/** Menú "Más" del celular: secciones que no caben en la barra inferior. */
+function abrirMas() {
+  const dlg = h("dialog", { class: "dlg mas-dlg", "aria-label": "Más secciones" });
+  const ir = (hash) => () => { dlg.close(); location.hash = hash; };
+  const item = (hash, texto, lock) => h("button", { class: "mas-item", type: "button", onclick: ir(hash) },
+    texto, lock && h("span", { class: "mas-lock", "aria-label": "Plan Estándar" }, "🔒"));
+  const bloq = !tieneEstandar(state.taller);
+  dlg.append(h("div", { class: "mas-lista" },
+    h("h2", {}, "Más"),
+    item("#presupuestos", "Presupuestos", bloq),
+    item("#reportes", "Reportes", bloq),
+    item("#clientes", "Clientes"),
+    item("#vehiculos", "Vehículos"),
+    item("#taller", "Mi taller"),
+    h("button", { class: "mas-item salir", type: "button", onclick: () => { dlg.close(); logout(); } }, "Salir"),
+    h("button", { class: "btn ghost block", type: "button", onclick: () => dlg.close() }, "Cerrar")));
+  dlg.addEventListener("close", () => dlg.remove());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  document.body.append(dlg);
+  dlg.showModal();
+}
 
 /** Pantalla de bloqueo: demo vencida o taller suspendido. Los datos siguen guardados. */
 function showLocked(t, suspendido = false) {
@@ -206,6 +250,8 @@ async function init() {
   state.taller = t.nombre.trim().toLowerCase() === "mi taller" ? await bienvenida(t) : t;
 
   updateChrome();
+  marcarEstandar();
+  $("navMas").addEventListener("click", abrirMas);
   $("shell").hidden = false;
   window.addEventListener("hashchange", route);
   // Tocar la sección en la que ya estás la vuelve a cargar (p. ej. "Nueva orden" después de crear una)

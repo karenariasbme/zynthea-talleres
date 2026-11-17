@@ -1,5 +1,5 @@
 import { sb } from "./sb.js";
-import { h, errMsg, formatPlaca, fmtFecha } from "./util.js";
+import { h, errMsg, formatPlaca, fmtFecha, mejorarPlanUrl } from "./util.js";
 
 // ---------- Logo del taller ----------
 export const logoUrl = (path) => (path ? sb.storage.from("logos").getPublicUrl(path).data.publicUrl : null);
@@ -122,4 +122,25 @@ export function asyncForm(props, children, onSubmit) {
     }
   });
   return form;
+}
+
+/**
+ * Función del Plan Estándar vista desde la demo o el Básico: se muestra, pero bloqueada.
+ * compacto = una línea dentro de otra tarjeta (p. ej. ítems en la orden).
+ */
+export function bloqueoEstandar(taller, titulo, texto, { compacto = false } = {}) {
+  const boton = h("a", { class: "btn primary" + (compacto ? " small" : ""), href: mejorarPlanUrl(taller, titulo),
+    target: "_blank", rel: "noopener" }, "Mejorar plan");
+  if (compacto) {
+    return h("div", { class: "lock-inline" },
+      h("span", { class: "lock-ico", "aria-hidden": "true" }, "🔒"),
+      h("div", { class: "lock-txt" }, h("b", {}, titulo), h("span", {}, "Disponible en Plan Estándar")),
+      boton);
+  }
+  return h("div", { class: "card lock-card" },
+    h("span", { class: "lock-ico big", "aria-hidden": "true" }, "🔒"),
+    h("h2", {}, titulo),
+    h("p", { class: "lock-plan" }, "Disponible en Plan Estándar"),
+    texto && h("p", { class: "note" }, texto),
+    boton);
 }

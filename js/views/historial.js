@@ -1,6 +1,7 @@
 import { sb } from "../sb.js";
 import { h, must, formatPlaca, fmtFecha, errMsg, parecePlaca } from "../util.js";
 import { pageHead, input, empty, loading, errorBox, estadoBadge } from "../ui.js";
+import { ETQ } from "../documento.js";
 import { cargarIndice, buscarEnIndice } from "../buscar.js";
 
 const AYUDA = "Busca por placa, nombre o cédula del cliente, marca, modelo o color.";
@@ -73,10 +74,11 @@ function detalle(o, abierto) {
       dato("Motivo", o.motivo),
       dato("Descripción", o.descripcion),
       dato("Ingreso", fmtFecha(o.fecha_ingreso)),
-      dato("Cómo llegó", o.observacion_ingreso),
+      o.kilometraje_ingreso != null && dato("Kilometraje", `${Number(o.kilometraje_ingreso).toLocaleString("es-EC")} km`),
+      dato(ETQ.ingreso, o.observacion_ingreso),
       dato("Salida", o.fecha_salida ? fmtFecha(o.fecha_salida) : "Pendiente"),
-      dato("Cómo se va", o.observacion_salida),
-      dato("Observaciones", o.observaciones)),
+      dato(ETQ.salida, o.observacion_salida),
+      dato(ETQ.observaciones, o.observaciones)),
     h("div", { class: "actions" },
       h("a", { class: "btn small ghost", href: `#orden/${id}` }, "Ver / imprimir"),
       h("a", { class: "btn small ghost", href: `#editar/${id}` }, "Editar"),

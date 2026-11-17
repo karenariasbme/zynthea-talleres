@@ -1,7 +1,8 @@
 import { sb } from "../sb.js";
-import { h, must, val, normPlaca, formatPlaca, toLocalInput, fromLocalInput } from "../util.js";
+import { h, must, val, num, normPlaca, formatPlaca, toLocalInput, fromLocalInput, tieneEstandar } from "../util.js";
 import { state } from "../state.js";
-import { pageHead, field, input, textarea, asyncForm, userError } from "../ui.js";
+import { pageHead, field, input, textarea, asyncForm, userError, bloqueoEstandar } from "../ui.js";
+import { ETQ } from "../documento.js";
 import { cargarIndice, buscarEnIndice } from "../buscar.js";
 
 const CLI_COLS = "id,nombre,cedula_ruc,telefono,correo";
@@ -155,8 +156,11 @@ export async function render(box) {
       field("Motivo *", input({ name: "motivo", maxlength: 200, placeholder: "Ej.: cambio de aceite, ruido en frenos" })),
       field("Descripción del trabajo", textarea({ name: "descripcion", maxlength: 2000 })),
       field("Fecha y hora de ingreso *", input({ name: "fecha_ingreso", type: "datetime-local", value: toLocalInput(), max: "2100-12-31T23:59" })),
-      field("¿Cómo llegó el vehículo?", textarea({ name: "observacion_ingreso", maxlength: 2000, placeholder: "Ej.: rayón en puerta derecha, tanque a 1/4" })),
-      field("Observaciones", textarea({ name: "observaciones", maxlength: 2000, placeholder: "Notas generales de la orden" })),
+      tieneEstandar(state.taller)
+        ? field(ETQ.km, input({ name: "kilometraje_ingreso", type: "number", min: 0, max: 3000000, inputmode: "numeric", placeholder: "Ej.: 85400" }))
+        : bloqueoEstandar(state.taller, ETQ.km, null, { compacto: true }),
+      field(ETQ.ingreso, textarea({ name: "observacion_ingreso", maxlength: 2000, placeholder: "Ej.: rayón en puerta derecha, tanque a 1/4" })),
+      field(ETQ.observaciones, textarea({ name: "observaciones", maxlength: 2000, placeholder: "Qué se va a hacer, pedidos del cliente, repuestos que trae" })),
       h("button", { class: "btn primary block", type: "submit" }, "Guardar orden")),
   ], async (fd, formEl) => {
     // Validar todo antes de crear nada
@@ -164,6 +168,8 @@ export async function render(box) {
     const motivo = val(fd, "motivo");
     if (!motivo) throw userError("Escribe el motivo de ingreso.");
     if (!fd.get("fecha_ingreso")) throw userError("Indica la fecha y hora de ingreso.");
+    const km = tieneEstandar(state.taller) ? num(fd, "kilometraje_ingreso") : null;
+    if (Number.isNaN(km) || km < 0 || km > 3000000) throw userError("El kilometraje debe ser un número entre 0 y 3.000.000.");
     if (!cliente && !val(fd, "c_nombre")) throw userError("Escribe el nombre del cliente o elige uno registrado.");
     const placa = normPlaca(fd.get("v_placa"));
     if (!vehiculo) {
@@ -207,6 +213,7 @@ export async function render(box) {
       fecha_ingreso: fromLocalInput(fd.get("fecha_ingreso")),
       observacion_ingreso: val(fd, "observacion_ingreso"),
       observaciones: val(fd, "observaciones"),
+      ...(km != null ? { kilometraje_ingreso: Math.round(km) } : {}),
     }).select("id,codigo").single());
     showCreated(formEl.closest(".page"), o);
   });
@@ -226,7 +233,9 @@ function showCreated(page, o) {
     h("div", { class: "card success stack" },
       h("p", { class: "eyebrow" }, "Orden creada"),
       h("p", { class: "big-code" }, o.codigo),
-      h("p", {}, "La orden quedó abierta. Ciérrala cuando entregues el vehículo."),
+      h("p", {}, tieneEstandar(state.taller)
+        ? "La orden quedó abierta. En la orden puedes agregar mano de obra y repuestos y enviarla al cliente."
+        : "La orden quedó abierta. Ciérrala cuando entregues el vehículo."),
       h("div", { class: "actions" },
         h("a", { class: "btn primary", href: `#orden/${id}` }, "Ver / imprimir orden"),
         h("button", { class: "btn ghost", type: "button", onclick: () => state.refresh() }, "Crear otra orden"),

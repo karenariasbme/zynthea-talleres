@@ -129,3 +129,51 @@ export function toast(text, kind = "ok") {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
 }
+
+// ---------- Plan Estándar ----------
+const NIVEL = { demo: 0, basico: 1, estandar: 2, profesional: 3, premium: 4 };
+/** demo y básico = 0/1; Estándar o superior = 2+. Mismo criterio que public._plan_nivel() en la base. */
+export const nivelPlan = (plan) => NIVEL[plan] ?? 0;
+export const tieneEstandar = (taller) => nivelPlan(taller?.plan) >= 2;
+
+/** WhatsApp de Zynthea con el mensaje para mejorar el plan. */
+export const mejorarPlanUrl = (taller, funcion) =>
+  `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+    `Hola Karen, quiero mejorar al Plan Estándar del Sistema para Talleres${taller?.nombre ? ` para "${taller.nombre}"` : ""}` +
+    (funcion ? ` (me interesa: ${funcion})` : "") + ".")}`;
+
+// ---------- Dinero (USD, Ecuador) ----------
+const fmtUSD = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" });
+export const usd = (n) => fmtUSD.format(Number(n) || 0);
+/** Número de un campo (acepta coma decimal); vacío → null. */
+export function num(fd, name) {
+  const v = val(fd, name);
+  if (v == null) return null;
+  const n = Number(v.replace(",", "."));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+// ---------- Enlaces de envío ----------
+/** Teléfono de Ecuador a formato internacional para wa.me (0991234567 → 593991234567). */
+export function telWa(tel) {
+  let d = (tel || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 10 && d.startsWith("0")) d = "593" + d.slice(1);
+  else if (d.length === 9 && d.startsWith("9")) d = "593" + d;
+  return d.length >= 9 && d.length <= 15 ? d : "";
+}
+export const waUrl = (tel, texto) => `https://wa.me/${telWa(tel)}?text=${encodeURIComponent(texto)}`;
+export const mailtoUrl = (correo, asunto, cuerpo) =>
+  `mailto:${encodeURIComponent(correo || "")}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+/** URL absoluta de una página pública del sistema (orden.html, presupuesto.html, enlaces.html). */
+export const urlPublica = (pagina, token) => new URL(`${pagina}?t=${encodeURIComponent(token)}`, location.href).href;
+
+// ---------- Fechas: inicio y fin de un mes en Ecuador (UTC-5 fijo) ----------
+export function rangoMes(yyyyMm) {
+  const [y, m] = yyyyMm.split("-").map(Number);
+  const desde = new Date(Date.UTC(y, m - 1, 1, 5));
+  const hasta = new Date(Date.UTC(y, m, 1, 5));
+  return [desde.toISOString(), hasta.toISOString()];
+}
+export const mesActual = () => toLocalInput().slice(0, 7);
+export const hoyLocal = () => toLocalInput().slice(0, 10);
