@@ -9,10 +9,11 @@ import * as clientes from "./views/clientes.js";
 import * as vehiculos from "./views/vehiculos.js";
 import * as historial from "./views/historial.js";
 import * as taller from "./views/taller.js";
+import * as admin from "./views/admin.js";
 
 const $ = (id) => document.getElementById(id);
 
-const routes = {
+let routes = {
   inicio: inicio.render,
   nueva: nueva.render,
   clientes: clientes.render,
@@ -25,11 +26,12 @@ const routes = {
 };
 // Pantallas internas que resaltan una sección del menú
 const navOf = { orden: "inicio", cerrar: "inicio", editar: "inicio" };
+let inicioRuta = "inicio";
 
 let seq = 0;
 async function route() {
   const [name, ...rest] = location.hash.replace(/^#/, "").split("/");
-  const key = routes[name] ? name : "inicio";
+  const key = routes[name] ? name : inicioRuta;
   const arg = decodeURIComponent(rest.join("/"));
   for (const a of document.querySelectorAll("#nav a")) {
     if (a.dataset.route === (navOf[key] || key)) a.setAttribute("aria-current", "page");
@@ -74,13 +76,39 @@ function updateChrome() {
 }
 state.updateChrome = updateChrome;
 
-function showLocked(t) {
+/** Pantalla de bloqueo: demo vencida o taller suspendido. Los datos siguen guardados. */
+function showLocked(t, suspendido = false) {
   $("shell").hidden = true;
   $("locked").hidden = false;
   $("lockedLogo").replaceChildren(tallerLogo(t, "lg"));
   $("lockedTaller").textContent = t.nombre;
-  const text = `Hola Karen, mi demo del Sistema para Talleres terminó y quiero activar mi plan para el taller "${t.nombre}".`;
+  if (suspendido) {
+    $("lockedTitle").textContent = "Taller suspendido";
+    $("lockedText").textContent = "El acceso a tu taller está suspendido. Tus datos están guardados; escríbenos para reactivarlo.";
+    $("lockedNota").textContent = t.nota_suspension || "";
+    $("lockedNota").hidden = !t.nota_suspension;
+    $("lockedPlanes").hidden = true;
+  }
+  const text = suspendido
+    ? `Hola Karen, el acceso de mi taller "${t.nombre}" en el Sistema para Talleres está suspendido y quiero reactivarlo.`
+    : `Hola Karen, mi demo del Sistema para Talleres terminó y quiero activar mi plan para el taller "${t.nombre}".`;
   $("lockedWa").href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
+}
+
+/** Cuenta de administradora: solo el panel (#admin/<pestaña>), sin el menú del taller. */
+function iniciarAdmin() {
+  routes = { admin: admin.render };
+  inicioRuta = "admin";
+  document.body.classList.add("admin-mode");
+  $("nav").hidden = true;
+  $("tallerLogo").replaceChildren(h("span", { class: "logo initials sm", "aria-hidden": "true" }, "ZS"));
+  $("tallerName").textContent = "Panel de administración";
+  document.querySelector(".top-brand").setAttribute("href", "#admin");
+  document.querySelector(".top-brand").setAttribute("title", "Panel de administración");
+  document.title = "Panel · Sistema para Talleres";
+  $("shell").hidden = false;
+  window.addEventListener("hashchange", route);
+  route();
 }
 
 /** Código de error que devuelve Google/Supabase en la URL al cancelar o fallar el inicio de sesión. */
@@ -146,20 +174,32 @@ async function init() {
     throw ue; // fallo de red: se muestra el error con "Reintentar"
   }
 
-  const { data: t, error } = await sb.from("talleres").select(TALLER_COLS).maybeSingle();
-  if (error) {
-    if (sesionInvalida(error)) return expulsar();
-    throw error;
-  }
-  if (!t) return expulsar(); // usuario sin taller
+  // Administradora: va directo al panel, aunque su propio taller de prueba esté vencido.
+  // Si es_admin() todavía no existe en la base (antes del 005), se sigue como cliente.
+  const { data: esAdmin, error: ae } = await sb.rpc("es_admin");
+  if (ae && sesionInvalida(ae)) return expulsar();
 
   sb.auth.onAuthStateChange((event, s) => {
     if (event === "SIGNED_OUT" || !s) location.replace("index.html");
   });
   $("logoutBtn").addEventListener("click", logout);
   $("lockedLogout").addEventListener("click", logout);
+
+  if (esAdmin === true) {
+    $("splash").hidden = true;
+    return iniciarAdmin();
+  }
+
+  // "*" incluye suspendido_at y nota_suspension (005) sin romper si aún no existen
+  const { data: t, error } = await sb.from("talleres").select("*").maybeSingle();
+  if (error) {
+    if (sesionInvalida(error)) return expulsar();
+    throw error;
+  }
+  if (!t) return expulsar(); // usuario sin taller
   $("splash").hidden = true;
 
+  if (t.suspendido_at) return showLocked(t, true);
   const vencida = t.plan === "demo" && t.trial_ends_at && new Date(t.trial_ends_at) <= new Date();
   if (vencida) return showLocked(t);
 

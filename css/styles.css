@@ -393,6 +393,27 @@ button.result:hover { border-color: var(--accent); }
 @media (min-width: 640px) { .legal { padding: 36px 40px; } }
 
 /* ---------- Impresión ---------- */
+/* ---------- Panel de administración ---------- */
+.admin-mode .main-col { padding-bottom: 0; }
+@media (min-width: 900px) { .admin-mode .shell:not([hidden]) { display: block; background: none; } }
+.admin-tabs { display: flex; gap: 4px; padding: 4px; background: #EEEAE3; border-radius: 10px; overflow-x: auto; }
+.admin-tabs a {
+  flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 6px 14px; border-radius: 8px; text-decoration: none;
+  font: 600 14px var(--font-b); color: var(--muted); white-space: nowrap;
+}
+.admin-tabs a[aria-current="page"] { background: var(--card); color: var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.admin-body { margin-top: 16px; }
+.admin-form { max-width: 520px; }
+.admin-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 4px; }
+.admin-head strong { font-size: 17px; overflow-wrap: anywhere; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.badge.demo { background: var(--accent); }
+.badge.vencida { background: var(--muted); }
+.badge.activo { background: var(--ok); }
+.badge.suspendido { background: var(--danger); }
+.item .msg { margin-top: 8px; }
+
 @media print {
   @page { margin: 14mm; }
   body { background: #fff; color: #000; }

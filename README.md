@@ -45,14 +45,27 @@ js/state.js         Estado compartido (taller actual)
 js/login.js         Lógica de index.html
 js/app.js           Arranque, sesión, demo/bloqueo y rutas (#inicio, #nueva, #orden/<id>, …)
 js/views/           Pantallas: inicio (con buscador global), nueva orden, detalle/cerrar orden,
-                    clientes, vehículos, historial, mi taller (datos, logo, plan y cuenta)
+                    clientes, vehículos, historial, mi taller (datos, logo, plan y cuenta),
+                    admin (panel de administración)
 sql/001_esquema.sql Esquema de la base (tablas, RLS, triggers)
 sql/002_perfil_taller.sql Datos de la empresa, logo y bucket "logos"
+sql/004_observaciones.sql Observaciones generales en la orden
+sql/005_panel_admin.sql   Admins, invitaciones, suspensión y funciones del panel
 ```
 
 Todo el texto que viene de la base se pinta con nodos de texto (`textContent`), nunca con `innerHTML`.
 
-## Pasar un taller a plan pagado
+## Panel de administración
+
+Desde [`sql/005_panel_admin.sql`](sql/005_panel_admin.sql), las cuentas de `public.admins` entran directo al panel (`#admin/talleres`) en lugar de a su taller:
+
+- **Talleres:** demos, demos vencidas, activos y suspendidos. Activar plan (la demo pasa al plan pagado con todos sus datos), cambiar plan, suspender (con motivo que ve el cliente) y reactivar.
+- **Dar acceso:** si el correo ya tiene cuenta confirmada, activa su plan al momento; si no, crea una invitación que se aplica sola cuando se registra y confirma su correo.
+- **Invitaciones:** pendientes, con opción de anular.
+
+Cada acción queda en `admin_bitacora`. Un taller con plan pagado no se puede borrar (trigger `trg_talleres_proteger_plan`). Un taller suspendido ve la pantalla "Taller suspendido"; sus datos no se borran.
+
+## Pasar un taller a plan pagado (SQL, alternativa al panel)
 
 En Supabase → **SQL Editor**:
 

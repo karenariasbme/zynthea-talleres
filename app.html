@@ -60,11 +60,12 @@
 <div id="locked" class="locked" hidden>
   <div class="card locked-card">
     <span id="lockedLogo"></span>
-    <h1>Tu demo terminó</h1>
-    <p>Tus datos están guardados; activa tu plan para seguir usándolos.</p>
+    <h1 id="lockedTitle">Tu demo terminó</h1>
+    <p id="lockedText">Tus datos están guardados; activa tu plan para seguir usándolos.</p>
     <p class="locked-taller" id="lockedTaller"></p>
+    <p class="msg warn" id="lockedNota" hidden></p>
     <div class="stack">
-      <a class="btn primary block" href="https://karenariasbme.github.io/KarenArias/talleres/#planes">Ver planes</a>
+      <a class="btn primary block" id="lockedPlanes" href="https://karenariasbme.github.io/KarenArias/talleres/#planes">Ver planes</a>
       <a class="btn whatsapp block" id="lockedWa" href="https://wa.me/593967857347" target="_blank" rel="noopener">WhatsApp</a>
       <button class="link" type="button" id="lockedLogout">Cerrar sesión</button>
     </div>
