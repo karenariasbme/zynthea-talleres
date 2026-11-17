@@ -110,6 +110,8 @@ textarea.input { resize: vertical; min-height: 84px; }
 .btn.block { width: 100%; }
 .link { background: none; border: 0; padding: 6px 0; color: var(--accent); font: 600 14px var(--font-b); text-decoration: underline; cursor: pointer; align-self: center; }
 .link.light { color: var(--accent-light); }
+.switch-mode { text-align: center; border-top: 1px solid var(--line); padding-top: 12px; }
+.switch-mode .link { padding: 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
 /* ---------- Mensajes ---------- */
