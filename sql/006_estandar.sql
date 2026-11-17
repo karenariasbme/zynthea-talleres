@@ -13,7 +13,9 @@
 --   4. Enlace público de orden y de presupuesto (solo lectura, por token)
 --   5. Página de enlaces del taller (slug, WhatsApp, ubicación, TikTok, color)
 --   6. Reservas de turno: formulario público (SECURITY DEFINER) + Agenda en la app
---   7. Permisos (incluye quitar TRUNCATE/TRIGGER/REFERENCES del 003)
+--   7. Costo de repuestos (ganancia = venta sin IVA − costo)
+--   8. Talleres internos / de prueba: fuera del panel y de los reportes, sin permisos extra
+--   9. Permisos (incluye quitar TRUNCATE/TRIGGER/REFERENCES del 003)
 -- =====================================================================
 
 
@@ -90,6 +92,11 @@ create policy orden_items_estandar on public.orden_items
   as restrictive for all to authenticated
   using      (taller_id = (select public.taller_estandar()))
   with check (taller_id = (select public.taller_estandar()));
+
+
+-- Costo unitario opcional en los ítems de la orden (ver sección 7)
+alter table public.orden_items
+  add column if not exists costo_unitario numeric check (costo_unitario is null or costo_unitario >= 0);
 
 
 -- ---------------------------------------------------------------------
@@ -170,6 +177,7 @@ create table public.presupuesto_items (
   descripcion     text not null check (length(trim(descripcion)) between 1 and 300),
   cantidad        numeric not null default 1 check (cantidad > 0),
   precio_unitario numeric not null default 0 check (precio_unitario >= 0),
+  costo_unitario  numeric check (costo_unitario is null or costo_unitario >= 0),   -- opcional; no sale al cliente
   subtotal        numeric generated always as (round(cantidad * precio_unitario, 2)) stored,
   created_at      timestamptz not null default now(),
   foreign key (taller_id, presupuesto_id)
@@ -233,8 +241,8 @@ begin
     (p.taller_id, p.vehiculo_id, p_tipo, p.motivo, p.descripcion, p.observaciones, p.aplica_iva, p.iva_porcentaje, p_kilometraje)
   returning id into v_orden;
 
-  insert into public.orden_items (taller_id, orden_id, tipo, descripcion, cantidad, precio_unitario)
-  select p.taller_id, v_orden, i.tipo, i.descripcion, i.cantidad, i.precio_unitario
+  insert into public.orden_items (taller_id, orden_id, tipo, descripcion, cantidad, precio_unitario, costo_unitario)
+  select p.taller_id, v_orden, i.tipo, i.descripcion, i.cantidad, i.precio_unitario, i.costo_unitario
   from public.presupuesto_items i
   where i.taller_id = p.taller_id and i.presupuesto_id = p.id
   order by i.created_at;
@@ -486,13 +494,65 @@ end $$;
 
 
 -- ---------------------------------------------------------------------
--- 7. PERMISOS
+-- 7. COSTO DE REPUESTOS (para el reporte de ganancias del mes)
+--    Ganancia de una orden = subtotal sin IVA − costo. Si algún repuesto no tiene costo,
+--    la app muestra solo ingresos para esa orden (repuestos_sin_costo > 0).
+--    El costo nunca sale en el enlace público ni en la orden impresa.
+-- ---------------------------------------------------------------------
+create view public.ordenes_costos with (security_invoker = true) as
+select o.id as orden_id,
+       round(coalesce(sum(i.cantidad * i.costo_unitario), 0), 2)                              as costo,
+       count(i.id) filter (where i.tipo = 'repuesto' and i.costo_unitario is null)::integer   as repuestos_sin_costo
+from public.ordenes_trabajo o
+left join public.orden_items i on i.taller_id = o.taller_id and i.orden_id = o.id
+group by o.id;
+
+
+-- ---------------------------------------------------------------------
+-- 8. TALLERES INTERNOS / DE PRUEBA
+--    interno = true: no sale en el panel ni en los reportes de zynthea-ops.
+--    No da ningún permiso: la cuenta sigue siendo un taller normal (la app no puede cambiar esta columna).
+--    Se marca solo desde el SQL Editor.
+-- ---------------------------------------------------------------------
+alter table public.talleres
+  add column if not exists interno boolean not null default false;
+
+-- admin_talleres() del 005, igual pero sin los talleres internos (misma firma: conserva sus permisos)
+create or replace function public.admin_talleres()
+returns table (taller_id uuid, nombre text, plan text, estado text, dueno_email text, telefono text,
+               trial_ends_at timestamptz, plan_desde timestamptz, suspendido_at timestamptz,
+               nota_suspension text, ordenes integer, ultima_orden timestamptz, created_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  perform public._exigir_admin();
+  return query
+    select t.id, t.nombre, t.plan,
+           case when t.suspendido_at is not null then 'suspendido'
+                when t.plan <> 'demo'            then 'activo'
+                when t.trial_ends_at > now()     then 'demo'
+                else 'demo_vencida' end,
+           (select u.email::text from public.miembros m join auth.users u on u.id = m.user_id
+             where m.taller_id = t.id and m.rol = 'dueno' order by m.created_at limit 1),
+           t.telefono, t.trial_ends_at, t.plan_desde, t.suspendido_at, t.nota_suspension,
+           (select count(*)::integer from public.ordenes_trabajo o where o.taller_id = t.id),
+           (select max(o.fecha_ingreso) from public.ordenes_trabajo o where o.taller_id = t.id),
+           t.created_at
+    from public.talleres t
+    where not public._taller_de_admin(t.id)
+      and not t.interno
+    order by t.created_at desc;
+end $$;
+
+
+-- ---------------------------------------------------------------------
+-- 9. PERMISOS
 -- ---------------------------------------------------------------------
 -- Tablas y vistas nuevas: cerradas a anon; authenticated solo lo necesario (RLS filtra por taller)
-revoke all on public.presupuestos, public.presupuesto_items, public.presupuestos_totales, public.reservas
+revoke all on public.presupuestos, public.presupuesto_items, public.presupuestos_totales,
+              public.reservas, public.ordenes_costos
   from anon, authenticated;
 grant select, insert, update, delete on public.presupuestos, public.presupuesto_items, public.reservas to authenticated;
-grant select on public.presupuestos_totales to authenticated;
+grant select on public.presupuestos_totales, public.ordenes_costos to authenticated;
 
 -- Endurecer lo del 003: sin TRUNCATE (se salta RLS), TRIGGER ni REFERENCES
 revoke truncate, trigger, references on public.orden_items, public.ordenes_totales from authenticated;
