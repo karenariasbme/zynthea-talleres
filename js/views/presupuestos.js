@@ -6,7 +6,7 @@ import { state } from "../state.js";
 import { pageHead, field, input, textarea, asyncForm, userError, empty, loading, errorBox, openDialog, bloqueoEstandar } from "../ui.js";
 import { cargarIndice, buscarEnIndice } from "../buscar.js";
 import { documento, ETQ } from "../documento.js";
-import { itemsEditor } from "../items.js";
+import { lineasForm, cargarItems } from "../items.js";
 import { botonesEnvio } from "../envio.js";
 
 export const ESTADOS_PR = {
@@ -132,25 +132,29 @@ export async function renderNuevo(box) {
   if (!tieneEstandar(state.taller)) return bloqueado(box);
   const idx = await cargarIndice();
   const sel = selectorCliente(idx);
+  const lineas = lineasForm({ items: [], aplica_iva: true, iva_porcentaje: 15 });
   const form = asyncForm({ class: "stack-lg", novalidate: true }, [
     sel.el,
-    h("div", { class: "card stack" }, h("h2", {}, "Presupuesto"), ...camposPresupuesto(null),
-      h("button", { class: "btn primary block", type: "submit" }, "Crear presupuesto")),
+    h("div", { class: "card stack" }, h("h2", {}, "Presupuesto"), ...camposPresupuesto(null)),
+    lineas.el,
+    h("button", { class: "btn primary block", type: "submit" }, "Guardar presupuesto"),
   ], async (fd) => {
     const datos = leerCampos(fd);
-    let cliente = sel.cliente;
-    if (!cliente) {
-      const nombre = val(fd, "c_nombre");
-      if (!nombre) throw userError("Elige un cliente registrado o escribe el nombre del cliente nuevo.");
-      cliente = must(await sb.from("clientes").insert({ nombre, cedula_ruc: val(fd, "c_cedula"),
-        telefono: val(fd, "c_telefono"), correo: val(fd, "c_correo") }).select("id").single());
-    }
-    const p = must(await sb.from("presupuestos").insert({ ...datos, cliente_id: cliente.id, vehiculo_id: sel.vehiculoId })
-      .select("id,codigo").single());
-    toast(`Presupuesto ${p.codigo} creado: agrega mano de obra y repuestos`);
-    location.hash = `#presupuesto/${encodeURIComponent(p.id)}`;
+    const cliente = sel.cliente;
+    if (!cliente && !val(fd, "c_nombre")) throw userError("Elige un cliente registrado o escribe el nombre del cliente nuevo.");
+    const lin = lineas.leer();
+    // Cliente nuevo (si hace falta), presupuesto e ítems en UNA transacción
+    const { data, error } = await sb.rpc("crear_presupuesto_completo", {
+      p_cliente: cliente ? { id: cliente.id }
+        : { nombre: val(fd, "c_nombre"), cedula_ruc: val(fd, "c_cedula"), telefono: val(fd, "c_telefono"), correo: val(fd, "c_correo") },
+      p_presupuesto: { ...datos, vehiculo_id: sel.vehiculoId, aplica_iva: lin.aplica_iva, iva_porcentaje: lin.iva_porcentaje },
+      p_items: lin.items,
+    });
+    if (error) throw ["22023", "P0002"].includes(error.code) ? userError(error.message) : error;
+    toast(`Presupuesto ${data.codigo} guardado`);
+    location.hash = `#presupuesto/${encodeURIComponent(data.id)}`;
   });
-  box.append(pageHead("Nuevo presupuesto", "Después agregas la mano de obra y los repuestos"), form);
+  box.append(pageHead("Nuevo presupuesto", "Cliente, trabajo, mano de obra y repuestos en un solo formulario"), form);
 }
 
 async function cargarPr(id) {
@@ -174,16 +178,24 @@ export async function renderEditar(box, id) {
   const eid = encodeURIComponent(p.id);
   if (p.orden_id) return box.append(pageHead(`Presupuesto ${p.codigo}`),
     empty("Este presupuesto ya se convirtió en orden y no se puede editar.", h("a", { class: "btn primary", href: `#presupuesto/${eid}` }, "Ver presupuesto")));
-  const idx = await cargarIndice();
+  const [idx, items] = await Promise.all([cargarIndice(), cargarItems("presupuesto_items", "presupuesto_id", p.id)]);
   const sel = selectorCliente(idx, { cliente: p.cliente, vehiculo_id: p.vehiculo_id });
+  const lineas = lineasForm({ items, aplica_iva: p.aplica_iva, iva_porcentaje: p.iva_porcentaje });
   const form = asyncForm({ class: "stack-lg", novalidate: true }, [
     sel.el,
-    h("div", { class: "card stack" }, h("h2", {}, "Presupuesto"), ...camposPresupuesto(p),
-      h("div", { class: "actions" },
-        h("button", { class: "btn primary", type: "submit" }, "Guardar cambios"),
-        h("a", { class: "btn ghost", href: `#presupuesto/${eid}` }, "Cancelar"))),
+    h("div", { class: "card stack" }, h("h2", {}, "Presupuesto"), ...camposPresupuesto(p)),
+    lineas.el,
+    h("div", { class: "actions" },
+      h("button", { class: "btn primary", type: "submit" }, "Guardar cambios"),
+      h("a", { class: "btn ghost", href: `#presupuesto/${eid}` }, "Cancelar")),
   ], async (fd) => {
-    must(await sb.from("presupuestos").update({ ...leerCampos(fd), vehiculo_id: sel.vehiculoId }).eq("id", p.id).select("id").single());
+    const lin = lineas.leer();
+    const { error } = await sb.rpc("editar_presupuesto_completo", {
+      p_id: p.id,
+      p_presupuesto: { ...leerCampos(fd), vehiculo_id: sel.vehiculoId, aplica_iva: lin.aplica_iva, iva_porcentaje: lin.iva_porcentaje },
+      p_items: lin.items,
+    });
+    if (error) throw ["22023", "P0002"].includes(error.code) ? userError(error.message) : error;
     toast(`Presupuesto ${p.codigo} actualizado`);
     location.hash = `#presupuesto/${eid}`;
   });
@@ -191,15 +203,13 @@ export async function renderEditar(box, id) {
 }
 
 // ---------- Detalle ----------
-function datosDoc(p, extra) {
-  const v = p.vehiculo;
+function datosDoc(p, items, totales) {
   return {
     tipoDoc: "presupuesto", taller: state.taller, codigo: p.codigo, badge: badgePr(p.estado),
     cliente: { nombre: p.cliente.nombre, cedula_ruc: p.cliente.cedula_ruc, telefono: p.cliente.telefono },
-    vehiculo: v, motivo: p.motivo, descripcion: p.descripcion, observaciones: p.observaciones,
+    vehiculo: p.vehiculo, motivo: p.motivo, descripcion: p.descripcion, observaciones: p.observaciones,
     fecha: p.created_at, valido_hasta: new Date(new Date(p.created_at).getTime() + p.validez_dias * 86400000).toISOString(),
-    items: extra?.items || [], totales: extra?.totales, aplica_iva: extra?.iva?.aplica_iva ?? p.aplica_iva,
-    iva_porcentaje: extra?.iva?.iva_porcentaje ?? p.iva_porcentaje,
+    items, totales, aplica_iva: p.aplica_iva, iva_porcentaje: p.iva_porcentaje,
   };
 }
 
@@ -209,31 +219,20 @@ export async function renderDetalle(box, id) {
   if (!p) return box.append(noEncontrado());
   const eid = encodeURIComponent(p.id);
   const convertido = !!p.orden_id;
+  const [items, rt] = await Promise.all([
+    cargarItems("presupuesto_items", "presupuesto_id", p.id),
+    sb.from("presupuestos_totales").select("*").eq("presupuesto_id", p.id).maybeSingle(),
+  ]);
+  const totales = must(rt);
+  const docBox = h("div", {}, documento(datosDoc(p, items, totales)));
 
-  const docBox = h("div", {}, documento(datosDoc(p)));
-  const envioBox = h("div", { class: "no-print" });
-  const ed = itemsEditor({
-    tabla: "presupuesto_items", fk: "presupuesto_id", id: p.id, padre: "presupuestos",
-    vistaTotales: "presupuestos_totales", idTotales: "presupuesto_id", conCostos: false,
-    onCambio: (d) => {
-      docBox.replaceChildren(documento(datosDoc(p, d)));
-      envioBox.replaceChildren(botonesEnvio({ taller: state.taller, tipoDoc: "presupuesto", codigo: p.codigo,
-        token: p.token_publico, cliente: p.cliente, total: d.totales?.total }));
-    },
-  });
-  if (!convertido) await ed.cargar();
-  else envioBox.replaceChildren(botonesEnvio({ taller: state.taller, tipoDoc: "presupuesto", codigo: p.codigo,
-    token: p.token_publico, cliente: p.cliente, total: null }));
-
-  // Estado del presupuesto
   const estadoSel = h("select", { class: "input estado-sel", "aria-label": "Estado del presupuesto", value: p.estado, disabled: convertido },
     Object.entries(ESTADOS_PR).filter(([k]) => k !== "convertido" || convertido).map(([k, n]) => h("option", { value: k }, n)));
   estadoSel.addEventListener("change", async () => {
     try {
       must(await sb.from("presupuestos").update({ estado: estadoSel.value }).eq("id", p.id).select("id").single());
       p.estado = estadoSel.value;
-      docBox.replaceChildren(documento(datosDoc(p)));
-      if (!convertido) await ed.cargar();
+      docBox.replaceChildren(documento(datosDoc(p, items, totales)));
       toast(`Estado: ${ESTADOS_PR[p.estado]}`);
     } catch (e) { toast(errMsg(e), "error"); estadoSel.value = p.estado; }
   });
@@ -269,22 +268,13 @@ export async function renderDetalle(box, id) {
     pageHead(`Presupuesto ${p.codigo}`, `${p.cliente.nombre}${p.vehiculo ? ` · ${formatPlaca(p.vehiculo.placa)}` : ""}`),
     h("div", { class: "actions no-print" },
       h("button", { class: "btn primary", type: "button", onclick: () => window.print() }, "Imprimir"),
-      !convertido && h("a", { class: "btn ghost", href: `#editar-presupuesto/${eid}` }, "Editar"),
+      !convertido && h("a", { class: "btn ghost", href: `#editar-presupuesto/${eid}` }, "Editar presupuesto y precios"),
       convertido
         ? h("a", { class: "btn primary", href: `#orden/${encodeURIComponent(p.orden_id)}` }, "Ver la orden")
         : h("button", { class: "btn primary", type: "button", onclick: convertir }, "Convertir en orden"),
       estadoSel),
-    convertido
-      ? h("p", { class: "msg ok no-print" }, "Este presupuesto ya se convirtió en orden. La mano de obra y los repuestos ahora se editan en la orden.")
-      : h("div", { class: "no-print" }, ed.el),
-    envioBox,
+    convertido ? h("p", { class: "msg ok no-print" }, "Este presupuesto ya se convirtió en orden. Los precios ahora se editan en la orden.") : "",
+    botonesEnvio({ taller: state.taller, tipoDoc: "presupuesto", codigo: p.codigo, token: p.token_publico,
+      cliente: p.cliente, total: totales?.total }),
     docBox);
-  if (convertido) {
-    // Solo lectura: mostrar ítems y totales en el documento
-    const [ri, rt] = await Promise.all([
-      sb.from("presupuesto_items").select("tipo,descripcion,cantidad,precio_unitario,subtotal,created_at").eq("presupuesto_id", p.id).order("created_at"),
-      sb.from("presupuestos_totales").select("*").eq("presupuesto_id", p.id).maybeSingle(),
-    ]);
-    docBox.replaceChildren(documento(datosDoc(p, { items: must(ri), totales: must(rt) })));
-  }
 }
