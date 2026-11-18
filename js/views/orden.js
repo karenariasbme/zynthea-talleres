@@ -68,7 +68,7 @@ export async function renderDetalle(box, id) {
         envioBox.replaceChildren(botonesEnvio({
           taller: state.taller, tipoDoc: "orden", codigo: o.codigo, placa: o.placa, token,
           docEl: () => docBox.querySelector(".print-doc"),
-          cliente: { nombre: o.cliente_nombre, telefono: o.cliente_telefono, correo }, total: d.totales?.total,
+          cliente: { id: o.cliente_id, nombre: o.cliente_nombre, telefono: o.cliente_telefono, correo }, total: d.totales?.total,
         }));
       },
     });

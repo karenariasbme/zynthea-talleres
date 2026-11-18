@@ -156,11 +156,11 @@ export function num(fd, name) {
 // ---------- Enlaces de envío ----------
 /** Teléfono de Ecuador a formato internacional para wa.me (0991234567 → 593991234567). */
 export function telWa(tel) {
-  let d = (tel || "").replace(/\D/g, "");
-  if (d.startsWith("00")) d = d.slice(2);
-  if (d.length === 10 && d.startsWith("0")) d = "593" + d.slice(1);
-  else if (d.length === 9 && d.startsWith("9")) d = "593" + d;
-  return d.length >= 9 && d.length <= 15 ? d : "";
+  let d = (tel || "").replace(/\D/g, "");          // quita espacios, guiones, paréntesis y el "+"
+  if (d.startsWith("00")) d = d.slice(2);          // 00593… → 593…
+  if (d.startsWith("0")) d = "593" + d.slice(1);   // 0980451896 → 593980451896
+  else if (d.length === 9 && d.startsWith("9")) d = "593" + d;   // 980451896 → 593980451896
+  return d.length >= 11 && d.length <= 15 ? d : "";
 }
 export const waUrl = (tel, texto) => `https://wa.me/${telWa(tel)}?text=${encodeURIComponent(texto)}`;
 export const mailtoUrl = (correo, asunto, cuerpo) =>
