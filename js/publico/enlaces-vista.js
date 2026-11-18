@@ -115,9 +115,17 @@ function colorDeFondo(img) {
     const esquinas = [[0, 0], [n - 3, 0], [0, n - 3], [n - 3, n - 3]].map(([x, y]) => zona(x, y));
     if (esquinas.some((p) => p[3] < 245)) return null;                       // fondo transparente
     const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (dist(esquinas[i], esquinas[j]) > 36) return null;
-    const prom = [0, 1, 2].map((k) => Math.round(esquinas.reduce((a, p) => a + p[k], 0) / 4));
-    return `rgb(${prom.join(",")})`;
+    const brillo = (p) => (p[0] + p[1] + p[2]) / 3;
+    const promedio = (ps) => [0, 1, 2].map((k) => Math.round(ps.reduce((a, p) => a + p[k], 0) / ps.length));
+    let parecidas = true;
+    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (dist(esquinas[i], esquinas[j]) > 36) parecidas = false;
+    if (parecidas) return `rgb(${promedio(esquinas).join(",")})`;
+    // Fondo con textura o degradado, pero todo oscuro (o todo muy claro): se usa el tono del medio de las esquinas
+    const oscuro = esquinas.every((p) => brillo(p) < 80);
+    const claro = esquinas.every((p) => brillo(p) > 205);
+    if (!oscuro && !claro) return null;   // esquinas de colores distintos: círculo blanco
+    const orden = [...esquinas].sort((a, b) => brillo(a) - brillo(b));
+    return `rgb(${promedio([orden[1], orden[2]]).join(",")})`;
   } catch {
     return null;   // canvas bloqueado (CORS): círculo blanco
   }
