@@ -52,7 +52,6 @@ sql/002_perfil_taller.sql Datos de la empresa, logo y bucket "logos"
 sql/004_observaciones.sql Observaciones generales en la orden
 sql/005_panel_admin.sql   Admins, invitaciones, suspensión y funciones del panel
 sql/006_estandar.sql      Plan Estándar: presupuestos, enlace público, reservas, costos, talleres internos
-sql/007_guardar_completo.sql Guardar orden / presupuesto con sus ítems en una sola transacción
 ```
 
 Todo el texto que viene de la base se pinta con nodos de texto (`textContent`), nunca con `innerHTML`.
@@ -63,7 +62,7 @@ Base de datos: [`sql/003_estandar_items.sql`](sql/003_estandar_items.sql) (ya ap
 Todo lo del Estándar exige plan `estandar` o superior en la base (`taller_estandar()` en RLS y `_plan_nivel()` en las funciones públicas).
 En la demo y el Básico estas secciones se ven con candado y el botón "Mejorar plan" (WhatsApp).
 
-- **Órdenes:** kilometraje de ingreso; secciones MANO DE OBRA y REPUESTOS dentro del mismo formulario de nueva orden y de edición, con subtotales, IVA activable y TOTAL en vivo. Se guarda todo en una transacción (`crear_orden_completa` / `editar_orden_completa`, sql/007): si algo falla, no queda nada a medias.
+- **Órdenes:** kilometraje de ingreso; mano de obra, repuestos y otros (cantidad × precio), IVA por orden (15 % por defecto) y total.
   Costo unitario opcional e interno: ganancia = venta sin IVA − costo; si falta algún costo, la orden cuenta solo como ingreso.
 - **Envío:** "Enviar por WhatsApp" (wa.me con mensaje y enlace), "Enviar por correo" (mailto) y "Copiar enlace".
   El enlace público (`orden.html?t=…` / `presupuesto.html?t=…`) es de solo lectura, con un token aleatorio de 64 caracteres;

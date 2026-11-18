@@ -3,9 +3,9 @@ import { h, must, val, num, normPlaca, formatPlaca, toLocalInput, fromLocalInput
 import { state } from "../state.js";
 import { pageHead, field, input, textarea, asyncForm, userError, bloqueoEstandar } from "../ui.js";
 import { ETQ } from "../documento.js";
-import { lineasForm } from "../items.js";
 import { cargarIndice, buscarEnIndice } from "../buscar.js";
 
+const CLI_COLS = "id,nombre,cedula_ruc,telefono,correo";
 const VEH_COLS = "id,placa,marca,modelo,anio,color,cliente_id";
 
 const detalleVehiculo = (v) => [v.marca, v.modelo, v.anio, v.color].filter(Boolean).join(" · ");
@@ -143,13 +143,6 @@ export async function render(box) {
   q.addEventListener("input", () => { clearTimeout(t); t = setTimeout(buscar, 200); });
   q.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
 
-  // ---------- Mano de obra y repuestos (Plan Estándar) ----------
-  const estandar = tieneEstandar(state.taller);
-  const lineas = estandar ? lineasForm({ items: [], aplica_iva: true, iva_porcentaje: 15 }) : null;
-  const bloqueItems = estandar ? lineas.el
-    : h("div", { class: "card stack" }, h("h2", {}, "Mano de obra y repuestos"),
-        bloqueoEstandar(state.taller, "Mano de obra, repuestos, IVA y total", null, { compacto: true }));
-
   // ---------- Bloque Orden + guardar ----------
   const form = asyncForm({ class: "stack-lg", novalidate: true }, [
     cBloque,
@@ -167,9 +160,8 @@ export async function render(box) {
         ? field(ETQ.km, input({ name: "kilometraje_ingreso", type: "number", min: 0, max: 3000000, inputmode: "numeric", placeholder: "Ej.: 85400" }))
         : bloqueoEstandar(state.taller, ETQ.km, null, { compacto: true }),
       field(ETQ.ingreso, textarea({ name: "observacion_ingreso", maxlength: 2000, placeholder: "Ej.: rayón en puerta derecha, tanque a 1/4" })),
-      field(ETQ.observaciones, textarea({ name: "observaciones", maxlength: 2000, placeholder: "Qué se va a hacer, pedidos del cliente, repuestos que trae" }))),
-    bloqueItems,
-    h("button", { class: "btn primary block", type: "submit" }, "Guardar orden"),
+      field(ETQ.observaciones, textarea({ name: "observaciones", maxlength: 2000, placeholder: "Qué se va a hacer, pedidos del cliente, repuestos que trae" })),
+      h("button", { class: "btn primary block", type: "submit" }, "Guardar orden")),
   ], async (fd, formEl) => {
     // Validar todo antes de crear nada
     if (!fd.get("tipo")) throw userError("Elige si es mantenimiento preventivo o correctivo.");
@@ -190,28 +182,39 @@ export async function render(box) {
       }
     }
 
-    const lin = lineas ? lineas.leer() : { items: [], aplica_iva: true, iva_porcentaje: 15 };
-    const anio = val(fd, "v_anio");
-    // Cliente, vehículo, orden e ítems en UNA transacción: si algo falla, no queda nada a medias
-    const { data: o, error } = await sb.rpc("crear_orden_completa", {
-      p_cliente: cliente ? { id: cliente.id }
-        : { nombre: val(fd, "c_nombre"), cedula_ruc: val(fd, "c_cedula"), telefono: val(fd, "c_telefono"), correo: val(fd, "c_correo") },
-      p_vehiculo: vehiculo ? { id: vehiculo.id }
-        : { placa, marca: val(fd, "v_marca"), modelo: val(fd, "v_modelo"), anio: anio ? Number(anio) : null, color: val(fd, "v_color") },
-      p_orden: {
-        tipo: fd.get("tipo"),
-        motivo,
-        descripcion: val(fd, "descripcion"),
-        fecha_ingreso: fromLocalInput(fd.get("fecha_ingreso")),
-        observacion_ingreso: val(fd, "observacion_ingreso"),
-        observaciones: val(fd, "observaciones"),
-        kilometraje_ingreso: km != null ? Math.round(km) : null,
-        aplica_iva: lin.aplica_iva,
-        iva_porcentaje: lin.iva_porcentaje,
-      },
-      p_items: lin.items,
-    });
-    if (error) throw ["22023", "P0002"].includes(error.code) ? userError(error.message) : error;
+    // Cliente nuevo → vehículo nuevo → orden. Lo creado queda bloqueado para no duplicarlo si un paso posterior falla.
+    let clienteNuevo = false;
+    if (!cliente) {
+      cliente = { ...must(await sb.from("clientes").insert({
+        nombre: val(fd, "c_nombre"), cedula_ruc: val(fd, "c_cedula"), telefono: val(fd, "c_telefono"), correo: val(fd, "c_correo"),
+      }).select(CLI_COLS).single()), vehiculos: [] };
+      clienteNuevo = true;
+    }
+    if (!vehiculo) {
+      const anio = val(fd, "v_anio");
+      const { data, error } = await sb.from("vehiculos").insert({
+        cliente_id: cliente.id, placa, marca: val(fd, "v_marca"), modelo: val(fd, "v_modelo"),
+        anio: anio ? Number(anio) : null, color: val(fd, "v_color"),
+      }).select(VEH_COLS).single();
+      if (error) {
+        if (clienteNuevo) { await sb.from("clientes").delete().eq("id", cliente.id); cliente = null; }
+        pintar();
+        throw error;
+      }
+      vehiculo = { ...data, cliente };
+    }
+    pintar();
+
+    const o = must(await sb.from("ordenes_trabajo").insert({
+      vehiculo_id: vehiculo.id,
+      tipo: fd.get("tipo"),
+      motivo,
+      descripcion: val(fd, "descripcion"),
+      fecha_ingreso: fromLocalInput(fd.get("fecha_ingreso")),
+      observacion_ingreso: val(fd, "observacion_ingreso"),
+      observaciones: val(fd, "observaciones"),
+      ...(km != null ? { kilometraje_ingreso: Math.round(km) } : {}),
+    }).select("id,codigo").single());
     showCreated(formEl.closest(".page"), o);
   });
 
