@@ -1,5 +1,6 @@
 import { sb } from "./sb.js";
 import { h, errMsg, formatPlaca, fmtFecha, mejorarPlanUrl } from "./util.js";
+import { cargarLogo } from "./logo.js";
 
 // ---------- Logo del taller ----------
 export const logoUrl = (path) => (path ? sb.storage.from("logos").getPublicUrl(path).data.publicUrl : null);
@@ -9,12 +10,25 @@ export function iniciales(nombre) {
   return ((w[0]?.[0] || "T") + (w[1]?.[0] || "")).toUpperCase();
 }
 
-/** Logo del taller, o sus iniciales en un círculo naranja si no tiene logo. */
+/**
+ * Logo del taller en un círculo del color de su fondo (rectángulo redondeado si es muy ancho),
+ * o sus iniciales en un círculo naranja si no tiene logo. Misma detección que la página de enlaces (logo.js).
+ */
 export function tallerLogo(t, size = "sm") {
   const url = logoUrl(t?.logo_path);
-  return url
-    ? h("img", { class: `logo ${size}`, src: url, alt: `Logo de ${t.nombre}` })
-    : h("span", { class: `logo initials ${size}`, "aria-hidden": "true" }, iniciales(t?.nombre));
+  const sinLogo = () => h("span", { class: `logo initials ${size}`, "aria-hidden": "true" }, iniciales(t?.nombre));
+  if (!url) return sinLogo();
+  const marco = h("span", { class: `logo marco ${size}` });
+  cargarLogo(url, `Logo de ${t.nombre}`, {
+    listo: ({ img, fondo, ancho }) => {
+      img.className = "logo-img";
+      if (ancho) marco.classList.add("ancho");
+      if (fondo) { marco.style.background = fondo; marco.classList.add("con-fondo"); }
+      marco.replaceChildren(img);
+    },
+    error: () => marco.replaceWith(sinLogo()),
+  });
+  return marco;
 }
 
 export const loading = (text = "Cargando…") =>
