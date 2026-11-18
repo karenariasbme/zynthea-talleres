@@ -1,8 +1,9 @@
 // Sección "Enviar al cliente" de una orden o un presupuesto.
-//  · "Enviar PDF por WhatsApp" (computadora y celular): descarga el PDF y abre el chat DEL CLIENTE
-//    (wa.me/593…) con el mensaje ya escrito; el usuario adjunta el PDF con el clip.
-//  · "Enviar PDF por correo": descarga el PDF y abre un correo al cliente (mailto) con el mismo mensaje.
-//  · "Compartir PDF" (solo en celular): menú del teléfono con el archivo (navigator.share).
+//  · Celular / tableta: "Enviar PDF por WhatsApp" / "por correo" generan el PDF y abren el menú Compartir del teléfono
+//    (navigator.share con el archivo y el mensaje). Si el teléfono no puede compartir archivos: descarga el PDF y abre
+//    el chat (wa.me/593…) o el correo del cliente. Botones secundarios: "Abrir chat del cliente" / "Abrir correo del cliente".
+//  · Computadora: nunca el panel Compartir de Windows. Descarga el PDF y abre el chat o el correo DEL CLIENTE con el
+//    mensaje ya escrito; aviso "Adjunta el PDF descargado con el clip 📎".
 //  · Enlace aparte: "Enviar enlace por WhatsApp" y "Copiar enlace".
 // En producción el enlace es https://karenariasbme.github.io/zynthea-talleres/orden.html?t=… (en local sale localhost).
 import { sb } from "./sb.js";
@@ -20,6 +21,7 @@ const esCelular = () =>
  *       cliente: { id, nombre, telefono, correo }, docEl: () => Element }
  */
 export function botonesEnvio(d) {
+  const celular = esCelular();
   const cliente = { ...d.cliente };
   const esOrden = d.tipoDoc === "orden";
   const url = urlPublica(esOrden ? "orden.html" : "presupuesto.html", d.token);
@@ -93,17 +95,46 @@ export function botonesEnvio(d) {
     }
   }
 
-  /** Descarga el PDF y abre el chat del cliente o el correo, con el aviso de adjuntar. */
+  /** Enviar el PDF por el canal elegido ("whatsapp" | "correo"). */
   async function enviarPdf(canal, btn) {
+    if (celular) {
+      // Celular: menú Compartir con el archivo; el contacto se elige en WhatsApp o en la app de correo
+      const file = await pdf(btn);
+      if (!file) return;
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: asunto, text: textoPdf() });
+          return;
+        } catch (e) {
+          if (e.name === "AbortError") return;                                   // cerró el menú Compartir
+          if (e.name === "NotAllowedError") return compartirConToque(file, canal); // generar tardó: hace falta un toque nuevo
+          // otro error: seguir como si no pudiera compartir
+        }
+      }
+      return descargarYAbrir(canal, file);
+    }
+    // Computadora: descargar el PDF y abrir el chat / correo del cliente
     if (!exigirContacto(canal, () => enviarPdf(canal, btn))) return;
     const file = await pdf(btn);
-    if (!file) return;
+    if (file) descargarYAbrir(canal, file);
+  }
+
+  /** Descarga el PDF y abre el chat o el correo del cliente, con el aviso de adjuntar. */
+  function descargarYAbrir(canal, file) {
+    if (!exigirContacto(canal, () => descargarYAbrir(canal, file))) return;
     descargar(file);
     const destino = canal === "whatsapp" ? chatCliente(textoPdf()) : mailtoUrl(cliente.correo, asunto, textoPdf());
     let abierto = false;
     if (canal === "whatsapp") abierto = !!window.open(destino, "_blank", "noopener");
     else { location.href = destino; abierto = true; }
     avisoAdjuntar(canal, destino, abierto);
+  }
+
+  /** Celular, botones secundarios: abrir el chat o el correo del cliente con el mensaje (sin PDF). */
+  function abrirContacto(canal) {
+    if (!exigirContacto(canal, () => abrirContacto(canal))) return;
+    if (canal === "whatsapp") window.open(chatCliente(textoPdf()), "_blank", "noopener");
+    else location.href = mailtoUrl(cliente.correo, asunto, textoPdf());
   }
 
   function avisoAdjuntar(canal, destino, abierto) {
@@ -125,26 +156,7 @@ export function botonesEnvio(d) {
     toast("Adjunta el PDF descargado con el clip 📎", "ok");
   }
 
-  /** Solo celular: menú Compartir del teléfono con el archivo. */
-  async function compartirPdf(btn) {
-    const file = await pdf(btn);
-    if (!file) return;
-    if (!navigator.canShare?.({ files: [file] })) {
-      descargar(file);
-      toast("Este teléfono no permite compartir archivos: el PDF se descargó.", "ok");
-      return;
-    }
-    try {
-      await navigator.share({ files: [file], title: asunto, text: textoPdf() });
-    } catch (e) {
-      if (e.name === "AbortError") return;
-      if (e.name === "NotAllowedError") return compartirConToque(file);   // generar tardó: hace falta un toque nuevo
-      descargar(file);
-      toast("No se pudo compartir: el PDF se descargó.", "ok");
-    }
-  }
-
-  function compartirConToque(file) {
+  function compartirConToque(file, canal) {
     const dlg = h("dialog", { class: "dlg" });
     dlg.append(h("div", { class: "dialog-form" },
       h("h2", {}, "PDF listo"),
@@ -154,7 +166,7 @@ export function botonesEnvio(d) {
         h("button", { class: "btn primary", type: "button", onclick: async () => {
           dlg.close();
           try { await navigator.share({ files: [file], title: asunto, text: textoPdf() }); }
-          catch (e) { if (e.name !== "AbortError") { descargar(file); toast("No se pudo compartir: el PDF se descargó.", "ok"); } }
+          catch (e) { if (e.name !== "AbortError") descargarYAbrir(canal, file); }
         } }, "Compartir"))));
     dlg.addEventListener("close", () => dlg.remove());
     document.body.append(dlg);
@@ -164,7 +176,10 @@ export function botonesEnvio(d) {
   const btn = (cls, texto, fn) => h("button", { class: `btn ${cls}`, type: "button", onclick: (e) => fn(e.currentTarget) }, texto);
   const pdfWa = btn("whatsapp", "Enviar PDF por WhatsApp", (b) => enviarPdf("whatsapp", b));
   const pdfMail = btn("primary", "Enviar PDF por correo", (b) => enviarPdf("correo", b));
-  const compartir = esCelular() ? btn("ghost", "Compartir PDF", compartirPdf) : null;
+  const secundarios = celular
+    ? [btn("ghost", "Abrir chat del cliente", () => abrirContacto("whatsapp")),
+       btn("ghost", "Abrir correo del cliente", () => abrirContacto("correo"))]
+    : [];
   const enlaceWa = btn("ghost", "Enviar enlace por WhatsApp", () => {
     if (!exigirContacto("whatsapp", () => window.open(chatCliente(textoEnlace()), "_blank", "noopener"))) return;
     window.open(chatCliente(textoEnlace()), "_blank", "noopener");
@@ -190,9 +205,13 @@ export function botonesEnvio(d) {
     avisos,
     h("div", { class: "envio-grupo" },
       h("h3", {}, "PDF del documento"),
-      h("div", { class: "actions" }, pdfWa, pdfMail, compartir),
-      h("p", { class: "note" }, `Se descarga ${archivo} (mismo diseño de la impresión, sin costos) y se abre el chat o el correo `
-        + "del cliente con el mensaje ya escrito. Solo adjuntas el PDF con el clip 📎.")),
+      h("div", { class: "actions" }, pdfWa, pdfMail),
+      secundarios.length ? h("div", { class: "actions envio-secundarios" }, secundarios) : "",
+      h("p", { class: "note" }, celular
+        ? `Se genera ${archivo} (mismo diseño de la impresión, sin costos) y se abre el menú Compartir del teléfono `
+          + "con el mensaje ya escrito: elige WhatsApp o tu correo y el contacto."
+        : `Se descarga ${archivo} (mismo diseño de la impresión, sin costos) y se abre el chat o el correo `
+          + "del cliente con el mensaje ya escrito. Solo adjuntas el PDF con el clip 📎.")),
     h("div", { class: "envio-grupo" },
       h("h3", {}, "Enlace de solo lectura"),
       h("div", { class: "actions" }, enlaceWa, copiar),
