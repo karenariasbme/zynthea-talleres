@@ -134,7 +134,11 @@ export function toast(text, kind = "ok") {
 const NIVEL = { demo: 0, basico: 1, estandar: 2, profesional: 3, premium: 4 };
 /** demo y básico = 0/1; Estándar o superior = 2+. Mismo criterio que public._plan_nivel() en la base. */
 export const nivelPlan = (plan) => NIVEL[plan] ?? 0;
-export const tieneEstandar = (taller) => nivelPlan(taller?.plan) >= 2;
+/** Demo vigente (plan demo y trial_ends_at en el futuro). */
+export const demoVigente = (taller) =>
+  taller?.plan === "demo" && !!taller.trial_ends_at && new Date(taller.trial_ends_at) > new Date();
+/** Funciones del Plan Estándar: plan Estándar o superior, o demo vigente (mismo criterio que public._con_estandar()). */
+export const tieneEstandar = (taller) => nivelPlan(taller?.plan) >= 2 || demoVigente(taller);
 
 /** WhatsApp de Zynthea con el mensaje para mejorar el plan. */
 export const mejorarPlanUrl = (taller, funcion) =>

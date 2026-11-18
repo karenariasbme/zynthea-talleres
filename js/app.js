@@ -87,7 +87,7 @@ function updateChrome() {
   const days = diasRestantes(t);
   banner.classList.toggle("warn", days <= 2);
   banner.replaceChildren(
-    h("span", {}, `Demo: te quedan ${days} ${days === 1 ? "día" : "días"}`),
+    h("span", {}, `Estás probando el Plan Estándar · te quedan ${days} ${days === 1 ? "día" : "días"}`),
     h("a", { href: PLANES_URL }, "Activar plan →"));
 }
 state.updateChrome = updateChrome;

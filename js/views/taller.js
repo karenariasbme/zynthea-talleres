@@ -147,7 +147,9 @@ function planCard() {
       h("span", { class: "plan-name" }, PLANES[t.plan] || t.plan),
       demo && h("span", { class: "badge open" }, `Quedan ${dias} ${dias === 1 ? "día" : "días"}`)),
     demo
-      ? [h("p", { class: "note" }, "Al terminar la demo tus datos quedan guardados; activa tu plan para seguir usándolos."),
+      ? [h("p", { class: "note" }, "Estás probando el Plan Estándar: presupuestos, mano de obra y repuestos con IVA, PDF por WhatsApp, "
+           + "agenda con reservas, página de enlaces y reporte de ganancias."),
+         h("p", { class: "note" }, "Al terminar la demo tus datos quedan guardados; activa tu plan para seguir usándolos."),
          h("a", { class: "btn primary", href: PLANES_URL }, "Activar plan")]
       : h("p", { class: "note" }, "Tu plan está activo."));
 }
