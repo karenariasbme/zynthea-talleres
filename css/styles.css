@@ -535,6 +535,18 @@ button.result:hover { border-color: var(--accent); }
 .pub-wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 14px; }
 .pub-wrap .state h1 { font-size: 30px; }
 
+/* ---------- Enviar al cliente: PDF y enlace ---------- */
+.envio-grupo { display: flex; flex-direction: column; gap: 8px; }
+.envio-grupo + .envio-grupo { border-top: 1px solid var(--line); padding-top: 14px; }
+.envio-grupo h3 { color: var(--ink); }
+
+/* Hoja oculta donde se arma el PDF: ancho útil de A4 (210 mm − 2 × 10 mm) y siempre el diseño de escritorio */
+.pdf-hoja { position: fixed; left: -10000px; top: 0; width: 718px; background: #fff; color: #000; }
+.pdf-hoja .print-doc { border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+.pdf-hoja .doc-cols { grid-template-columns: 1fr 1fr; }
+.pdf-hoja .doc-code { align-items: flex-end; }
+.pdf-hoja .items-table th, .pdf-hoja .items-table td { padding: 6px 8px; }
+
 @media print {
   @page { margin: 14mm; }
   body { background: #fff; color: #000; }

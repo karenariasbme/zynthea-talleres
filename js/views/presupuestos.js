@@ -218,12 +218,12 @@ export async function renderDetalle(box, id) {
     onCambio: (d) => {
       docBox.replaceChildren(documento(datosDoc(p, d)));
       envioBox.replaceChildren(botonesEnvio({ taller: state.taller, tipoDoc: "presupuesto", codigo: p.codigo,
-        token: p.token_publico, cliente: p.cliente, total: d.totales?.total }));
+        token: p.token_publico, cliente: p.cliente, total: d.totales?.total, docEl: () => docBox.querySelector(".print-doc") }));
     },
   });
   if (!convertido) await ed.cargar();
   else envioBox.replaceChildren(botonesEnvio({ taller: state.taller, tipoDoc: "presupuesto", codigo: p.codigo,
-    token: p.token_publico, cliente: p.cliente, total: null }));
+    token: p.token_publico, cliente: p.cliente, total: null, docEl: () => docBox.querySelector(".print-doc") }));
 
   // Estado del presupuesto
   const estadoSel = h("select", { class: "input estado-sel", "aria-label": "Estado del presupuesto", value: p.estado, disabled: convertido },
@@ -285,6 +285,9 @@ export async function renderDetalle(box, id) {
       sb.from("presupuesto_items").select("tipo,descripcion,cantidad,precio_unitario,subtotal,created_at").eq("presupuesto_id", p.id).order("created_at"),
       sb.from("presupuestos_totales").select("*").eq("presupuesto_id", p.id).maybeSingle(),
     ]);
-    docBox.replaceChildren(documento(datosDoc(p, { items: must(ri), totales: must(rt) })));
+    const totales = must(rt);
+    docBox.replaceChildren(documento(datosDoc(p, { items: must(ri), totales })));
+    envioBox.replaceChildren(botonesEnvio({ taller: state.taller, tipoDoc: "presupuesto", codigo: p.codigo,
+      token: p.token_publico, cliente: p.cliente, total: totales?.total, docEl: () => docBox.querySelector(".print-doc") }));
   }
 }
