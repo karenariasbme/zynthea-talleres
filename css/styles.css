@@ -177,6 +177,18 @@ img.logo { object-fit: contain; background: #fff; border-radius: 8px; }
 .logo.lg { width: 96px; height: 96px; font-size: 38px; }
 .logo.doc { width: 72px; height: 72px; font-size: 28px; }
 img.logo.sm { padding: 2px; }
+/* Marco del logo (logo.js): círculo del color del fondo del logo; rectángulo redondeado si es muy ancho */
+.logo.marco {
+  border-radius: 50%; background: #fff; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.logo.marco.con-fondo { box-shadow: none; }
+.logo.marco .logo-img { width: 100%; height: 100%; object-fit: contain; padding: 12%; display: block; }
+.logo.marco.ancho { border-radius: 10px; }
+.logo.marco.ancho .logo-img { padding: 6% 8%; }
+.logo.marco.sm.ancho { width: 72px; }
+.logo.marco.lg.ancho { width: 200px; }
+.logo.marco.doc.ancho { width: 160px; }
 
 /* ---------- Estructura de la app ---------- */
 .shell { min-height: 100vh; }

@@ -2,6 +2,7 @@
 // (así se puede previsualizar con datos de ejemplo). Todo el texto del taller va con nodos de texto, nunca innerHTML;
 // el único innerHTML es el de los íconos SVG fijos de este archivo.
 import { h, telWa, TZ } from "../util.js";
+import { cargarLogo } from "../logo.js";
 
 // ---------- Color de marca → paleta con contraste AA ----------
 const hexARgb = (hex) => [0, 2, 4].map((i) => parseInt(hex.slice(1 + i, 3 + i), 16));
@@ -98,63 +99,19 @@ export function formatoTel(digitos) {
   return m ? `+593 ${m[1]} ${m[2]} ${m[3]}` : digitos ? `+${digitos}` : "";
 }
 
-/** Color de fondo del logo leyendo sus 4 esquinas con canvas; null si es transparente, si varían o si falla (CORS). */
-function colorDeFondo(img) {
-  try {
-    const n = 48;
-    const c = document.createElement("canvas");
-    c.width = n; c.height = n;
-    const g = c.getContext("2d", { willReadFrequently: true });
-    g.drawImage(img, 0, 0, n, n);
-    const zona = (x, y) => {   // promedio de 3×3 píxeles en cada esquina
-      const d = g.getImageData(x, y, 3, 3).data;
-      const s = [0, 0, 0, 0];
-      for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 4; k++) s[k] += d[i + k];
-      return s.map((v) => v / 9);
-    };
-    const esquinas = [[0, 0], [n - 3, 0], [0, n - 3], [n - 3, n - 3]].map(([x, y]) => zona(x, y));
-    if (esquinas.some((p) => p[3] < 245)) return null;                       // fondo transparente
-    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-    const brillo = (p) => (p[0] + p[1] + p[2]) / 3;
-    const promedio = (ps) => [0, 1, 2].map((k) => Math.round(ps.reduce((a, p) => a + p[k], 0) / ps.length));
-    let parecidas = true;
-    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (dist(esquinas[i], esquinas[j]) > 36) parecidas = false;
-    if (parecidas) return `rgb(${promedio(esquinas).join(",")})`;
-    // Fondo con textura o degradado, pero todo oscuro (o todo muy claro): se usa el tono del medio de las esquinas
-    const oscuro = esquinas.every((p) => brillo(p) < 80);
-    const claro = esquinas.every((p) => brillo(p) > 205);
-    if (!oscuro && !claro) return null;   // esquinas de colores distintos: círculo blanco
-    const orden = [...esquinas].sort((a, b) => brillo(a) - brillo(b));
-    return `rgb(${promedio([orden[1], orden[2]]).join(",")})`;
-  } catch {
-    return null;   // canvas bloqueado (CORS): círculo blanco
-  }
-}
-
 /** Marco del logo: círculo (o rectángulo redondeado si el logo es muy ancho) del color de su fondo, sin recortar nada. */
 function marcoLogo(url, nombre) {
   const marco = h("div", { class: "lk-logo" });
   const sinLogo = () => marco.replaceChildren(h("span", { class: "lk-iniciales", "aria-hidden": "true" }, iniciales(nombre)));
   if (!url) { sinLogo(); return marco; }
-  const cargar = (conCors) => {
-    const img = new Image();
-    img.alt = `Logo de ${nombre}`;
-    img.decoding = "async";
-    if (conCors) img.crossOrigin = "anonymous";
-    img.addEventListener("load", () => {
-      const prop = img.naturalWidth / img.naturalHeight;
-      if (prop > 1.6) {
-        marco.classList.add("ancho");
-        marco.style.aspectRatio = String(Math.min(prop, 3));
-      }
-      const fondo = conCors ? colorDeFondo(img) : null;
+  cargarLogo(url, `Logo de ${nombre}`, {
+    listo: ({ img, fondo, ancho, proporcion }) => {
+      if (ancho) { marco.classList.add("ancho"); marco.style.aspectRatio = String(Math.min(proporcion, 3)); }
       if (fondo) { marco.style.background = fondo; marco.classList.add("con-fondo"); }
       marco.replaceChildren(img);
-    });
-    img.addEventListener("error", () => (conCors ? cargar(false) : sinLogo()));   // sin CORS: se muestra igual, en blanco
-    img.src = url;
-  };
-  cargar(true);
+    },
+    error: sinLogo,
+  });
   return marco;
 }
 
