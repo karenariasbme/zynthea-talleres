@@ -24,10 +24,11 @@
 -- ---------------------------------------------------------------------
 -- 1. ¿El taller tiene las funciones del Estándar?
 -- ---------------------------------------------------------------------
+-- Corregido al ejecutarlo (18/11/2026): una demo sin fecha de fin devolvía null; coalesce(…, false) la deja en false.
 create function public._con_estandar(p_plan text, p_trial_ends_at timestamptz)
 returns boolean language sql stable set search_path = '' as $$
   select public._plan_nivel(p_plan) >= 2
-      or (p_plan = 'demo' and p_trial_ends_at > now())
+      or coalesce(p_plan = 'demo' and p_trial_ends_at > now(), false)
 $$;
 
 revoke execute on function public._con_estandar(text, timestamptz) from public, anon, authenticated;
