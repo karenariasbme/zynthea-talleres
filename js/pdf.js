@@ -32,26 +32,37 @@ function imagenesConCors(raiz) {
 export async function generarPdf(docEl, nombreArchivo) {
   if (!docEl) throw new Error("No hay documento para convertir en PDF.");
   const html2pdf = await libreria();
-  // Copia fuera de la pantalla, con ancho de hoja A4 y el aspecto de impresión
+  // Copia en una capa fija en 0,0 (detrás de la página e invisible): hoja A4 de 794 px con el aspecto de impresión.
+  // Nunca fuera de la vista con left negativo: con la pantalla bajada, html2canvas desplazaba el dibujo
+  // (página 1 en blanco y la orden cortada a mitad de la página 2).
+  const capa = document.createElement("div");
+  capa.className = "pdf-capa";
   const hoja = document.createElement("div");
   hoja.className = "pdf-hoja";
   const copia = docEl.cloneNode(true);
   copia.querySelectorAll(".no-print").forEach((n) => n.remove());
   hoja.append(copia);
-  document.body.append(hoja);
+  capa.append(hoja);
+  document.body.append(capa);
   try {
     await imagenesConCors(copia);
     const blob = await html2pdf().set({
-      margin: [10, 10, 12, 10],
+      margin: [10, 0, 12, 0],   // los 10 mm de los lados ya están dentro de la hoja (padding de 38 px)
       filename: nombreArchivo,
       image: { type: "jpeg", quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false },
+      // scroll en 0 y ventana de 794 px: el dibujo no depende de cuánto bajó la pantalla ni del ancho del celular
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false,
+                     scrollX: 0, scrollY: 0, windowWidth: 794 },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"], avoid: ["tr", ".dato", ".doc-foot", "section"] },
-    }).from(copia).outputPdf("blob");
+      // Sin cortar secciones, datos, filas, totales, datos de pago ni firmas. La tabla de mano de obra y repuestos
+      // puede seguir en la página siguiente, pero siempre entre filas (si no, una tabla larga dejaba media hoja vacía).
+      pagebreak: { mode: ["css", "legacy"],
+                   avoid: ["section:not(.doc-items)", ".doc-items h3", ".doc-head", ".doc-cols", ".dato",
+                           "thead", "tr", "tfoot", ".doc-foot", ".doc-pago"] },
+    }).from(hoja).outputPdf("blob");
     return new File([blob], nombreArchivo, { type: "application/pdf" });
   } finally {
-    hoja.remove();
+    capa.remove();
   }
 }
 

@@ -7,7 +7,7 @@
 //  · Enlace aparte: "Enviar enlace por WhatsApp" y "Copiar enlace".
 // En producción el enlace es https://karenariasbme.github.io/zynthea-talleres/orden.html?t=… (en local sale localhost).
 import { sb } from "./sb.js";
-import { h, must, val, telWa, mailtoUrl, urlPublica, usd, toast, normPlaca, errMsg } from "./util.js";
+import { h, must, val, telWa, mailtoUrl, urlPublica, usd, toast, normPlaca, errMsg, tieneEstandar, textoPago } from "./util.js";
 import { field, input, openDialog, userError } from "./ui.js";
 import { generarPdf, descargar } from "./pdf.js";
 
@@ -29,6 +29,8 @@ export function botonesEnvio(d) {
   const Que = esOrden ? "Orden de trabajo" : "Presupuesto";
   const taller = d.taller?.nombre || "el taller";
   const total = Number(d.total) > 0 ? ` por un total de ${usd(d.total)}` : "";
+  // Datos de pago del taller (Estándar): debajo del total; "" si no los llenó
+  const pago = tieneEstandar(d.taller) ? textoPago(d.taller?.datos_pago) : "";
   const asunto = `${Que} ${d.codigo} · ${taller}`;
   const archivo = esOrden
     ? `Orden-${d.codigo}${d.placa ? `-${normPlaca(d.placa)}` : ""}.pdf`
@@ -39,8 +41,8 @@ export function botonesEnvio(d) {
     const nombre = (cliente.nombre || "").trim().replace(/\s+/g, " ");
     return `Hola${nombre ? ` ${nombre}` : ""}, le saluda ${taller}.`;
   };
-  const textoPdf = () => `${saludo()} Le envío ${que} ${d.codigo}${total}. Le adjunto el PDF.\n\nGracias por su confianza.`;
-  const textoEnlace = () => `${saludo()} Puede ver ${que} ${d.codigo}${total} en este enlace:\n${url}`;
+  const textoPdf = () => `${saludo()} Le envío ${que} ${d.codigo}${total}. Le adjunto el PDF.${pago}\n\nGracias por su confianza.`;
+  const textoEnlace = () => `${saludo()} Puede ver ${que} ${d.codigo}${total} en este enlace:\n${url}${pago}`;
   const chatCliente = (texto) => `https://wa.me/${telWa(cliente.telefono)}?text=${encodeURIComponent(texto)}`;
 
   /** Editar teléfono y correo del cliente sin salir de la orden. */

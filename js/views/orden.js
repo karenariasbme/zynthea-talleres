@@ -27,6 +27,7 @@ function datosDoc(o, extra) {
     fecha_ingreso: o.fecha_ingreso, kilometraje_ingreso: o.kilometraje_ingreso, observacion_ingreso: o.observacion_ingreso,
     fecha_salida: o.fecha_salida, observacion_salida: o.observacion_salida, observaciones: o.observaciones,
     items: extra?.items || [], totales: extra?.totales, aplica_iva: extra?.iva?.aplica_iva, iva_porcentaje: extra?.iva?.iva_porcentaje,
+    datos_pago: tieneEstandar(state.taller) ? state.taller.datos_pago : null,
     pie: `Impreso el ${fmtFecha(new Date().toISOString())} · Desarrollado por Zynthea Solutions`,
   };
 }

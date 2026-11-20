@@ -41,6 +41,7 @@ async function cargar() {
     fecha: doc.fecha, valido_hasta: doc.valido_hasta,
     items: data.items || [], totales: data.totales, aplica_iva: doc.aplica_iva, iva_porcentaje: doc.iva_porcentaje,
     firmas: tipo === "presupuesto",
+    datos_pago: t.datos_pago, copiarCuenta: true,
     pie: `Consultado el ${fmtFecha(new Date().toISOString())} · Documento de solo lectura · Desarrollado por Zynthea Solutions`,
   };
 

@@ -552,9 +552,42 @@ button.result:hover { border-color: var(--accent); }
 .envio-grupo + .envio-grupo { border-top: 1px solid var(--line); padding-top: 14px; }
 .envio-grupo h3 { color: var(--ink); }
 
-/* Hoja oculta donde se arma el PDF: ancho útil de A4 (210 mm − 2 × 10 mm) y siempre el diseño de escritorio */
-.pdf-hoja { position: fixed; left: -10000px; top: 0; width: 718px; background: #fff; color: #000; }
-.pdf-hoja .print-doc { border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+/* Datos de pago al final del documento */
+.doc-pago { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.doc-pago-nota { margin-top: 10px; font-size: 14.5px; }
+.pago-num { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pago-num .mono { font-family: var(--font-m); font-weight: 700; letter-spacing: .02em; }
+
+/* PDF. Capa fija en 0,0 detrás de la página (z-index negativo e invisible, nunca con left negativo: con la pantalla
+   bajada html2canvas la desplazaba y salía una página en blanco). Dentro, la hoja A4 de 794 px con márgenes de 10 mm
+   a los lados (38 px) y siempre el diseño de escritorio, sin importar el ancho del celular. */
+.pdf-capa { position: fixed; top: 0; left: 0; width: 794px; z-index: -1; opacity: 0; pointer-events: none; overflow: hidden; }
+.pdf-hoja { width: 794px; max-width: 100%; box-sizing: border-box; padding: 0 38px; background: #fff; color: #000; }
+/* Contenedor que arma html2pdf: lo centra en la ventana (margin: auto), pero html2canvas dibuja con windowWidth 794;
+   en una pantalla ancha quedaba corrido a un lado. Pegado a la izquierda, ambos coinciden. */
+.html2pdf__container { margin: 0 !important; right: auto !important; }
+.pdf-hoja .print-doc { border: 0; border-radius: 0; padding: 0; box-shadow: none; background: #fff; }
+/* html2canvas no entiende overflow-wrap: anywhere y bajaba palabras de línea ("Repuesto" en la columna Tipo) */
+.pdf-hoja .print-doc, .pdf-hoja .dato dd { overflow-wrap: break-word; }
+.pdf-hoja .items-table td:nth-child(2) { white-space: nowrap; }
+/* PDF: "Datos de pago" compacto en 2 columnas (Banco · Tipo / N.º de cuenta · Titular / Cédula-RUC · nota)
+   y firmas más cerca, para que una orden corta quepa en 1 página */
+.pdf-hoja .doc-pago { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 24px; padding: 10px 14px; }
+.pdf-hoja .doc-pago h3 { grid-column: 1 / -1; margin-bottom: 2px; }
+.pdf-hoja .doc-pago dl { display: contents; }
+.pdf-hoja .doc-pago .dato { grid-template-columns: 96px 1fr; gap: 8px; font-size: 13px; }
+.pdf-hoja .doc-pago .dato dt { font-size: 12px; }
+.pdf-hoja .doc-pago-nota { margin: 0; font-size: 13px; align-self: start; }
+.pdf-hoja .doc-foot { margin-top: 14px; }
+.pdf-hoja .print-doc { gap: 14px; }
+.pdf-hoja .print-doc dl { gap: 5px; }
+.pdf-hoja .print-doc h3 { margin-bottom: 6px; }
+.pdf-hoja .doc-pago dl { gap: 0; }
+.pdf-hoja .items-table th, .pdf-hoja .items-table td { padding-top: 4px; padding-bottom: 4px; }
+.pdf-hoja .doc-head { padding-bottom: 10px; }
+.pdf-hoja .print-doc { line-height: 1.35; }
+.pdf-hoja .dato { font-size: 14px; }
+.pdf-hoja .dato dt { font-size: 13px; }
 .pdf-hoja .doc-cols { grid-template-columns: 1fr 1fr; }
 .pdf-hoja .doc-code { align-items: flex-end; }
 .pdf-hoja .items-table th, .pdf-hoja .items-table td { padding: 6px 8px; }
