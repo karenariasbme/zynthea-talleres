@@ -35,7 +35,7 @@ async function cargar() {
     badge: tipo === "orden" ? estadoBadge(doc) : null,
     cliente: { nombre: data.cliente?.nombre },
     vehiculo: data.vehiculo,
-    tipo: doc.tipo, motivo: doc.motivo, descripcion: doc.descripcion,
+    tipo: doc.tipo, motivo: doc.motivo, descripcion: doc.descripcion, ocultarDescripcionVacia: true,
     fecha_ingreso: doc.fecha_ingreso, kilometraje_ingreso: doc.kilometraje_ingreso, observacion_ingreso: doc.observacion_ingreso,
     fecha_salida: doc.fecha_salida, observacion_salida: doc.observacion_salida, observaciones: doc.observaciones,
     fecha: doc.fecha, valido_hasta: doc.valido_hasta,

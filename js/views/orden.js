@@ -23,7 +23,7 @@ function datosDoc(o, extra) {
     badge: estadoBadge(o),
     cliente: { nombre: o.cliente_nombre, cedula_ruc: o.cliente_cedula_ruc, telefono: o.cliente_telefono },
     vehiculo: { placa: o.placa, marca: o.marca, modelo: o.modelo, anio: o.anio, color: o.color },
-    tipo: o.tipo, motivo: o.motivo, descripcion: o.descripcion,
+    tipo: o.tipo, motivo: o.motivo, descripcion: o.descripcion, ocultarDescripcionVacia: tieneEstandar(state.taller),
     fecha_ingreso: o.fecha_ingreso, kilometraje_ingreso: o.kilometraje_ingreso, observacion_ingreso: o.observacion_ingreso,
     fecha_salida: o.fecha_salida, observacion_salida: o.observacion_salida, observaciones: o.observaciones,
     items: extra?.items || [], totales: extra?.totales, aplica_iva: extra?.iva?.aplica_iva, iva_porcentaje: extra?.iva?.iva_porcentaje,
@@ -155,7 +155,7 @@ export async function renderEditar(box, id) {
     h("div", { class: "field" }, h("span", { class: "field-label" }, "Tipo de mantenimiento *"),
       h("div", { class: "segmented" }, radio("preventivo", "Preventivo"), radio("correctivo", "Correctivo"))),
     field("Motivo *", input({ name: "motivo", required: true, maxlength: 200, value: o.motivo })),
-    field("Descripción del trabajo", textarea({ name: "descripcion", maxlength: 2000, value: o.descripcion ?? "" })),
+    !tieneEstandar(state.taller) && field("Descripción del trabajo", textarea({ name: "descripcion", maxlength: 2000, value: o.descripcion ?? "" })),
     field("Fecha y hora de ingreso *", input({ name: "fecha_ingreso", type: "datetime-local", required: true,
       value: toLocalInput(new Date(o.fecha_ingreso)), max: "2100-12-31T23:59" })),
     tieneEstandar(state.taller) && field(ETQ.km, input({ name: "kilometraje_ingreso", type: "number", min: 0, max: 3000000,
@@ -178,15 +178,17 @@ export async function renderEditar(box, id) {
     const cambios = {
       tipo: fd.get("tipo"),
       motivo,
-      descripcion: val(fd, "descripcion"),
       fecha_ingreso: fromLocalInput(fd.get("fecha_ingreso")),
       observacion_ingreso: val(fd, "observacion_ingreso"),
       observaciones: val(fd, "observaciones"),
     };
     if (tieneEstandar(state.taller)) {
+      // En el Estándar no se envía "descripcion": la que ya tenga la orden se conserva.
       const km = num(fd, "kilometraje_ingreso");
       if (Number.isNaN(km) || km < 0 || km > 3000000) throw userError("El kilometraje debe ser un número entre 0 y 3.000.000.");
       cambios.kilometraje_ingreso = km == null ? null : Math.round(km);
+    } else {
+      cambios.descripcion = val(fd, "descripcion");
     }
     if (cerrada) {
       if (!fd.get("fecha_salida")) throw userError("Indica la fecha y hora de salida, o reabre la orden desde el detalle.");

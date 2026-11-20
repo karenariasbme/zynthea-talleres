@@ -154,7 +154,8 @@ export async function render(box) {
           h("label", {}, h("input", { type: "radio", name: "tipo", value: "preventivo" }), "Preventivo"),
           h("label", {}, h("input", { type: "radio", name: "tipo", value: "correctivo" }), "Correctivo"))),
       field("Motivo *", input({ name: "motivo", maxlength: 200, placeholder: "Ej.: cambio de aceite, ruido en frenos" })),
-      field("Descripción del trabajo", textarea({ name: "descripcion", maxlength: 2000 })),
+      // Plan Estándar (y demo vigente): sin "Descripción del trabajo"; el Básico la conserva.
+      !tieneEstandar(state.taller) && field("Descripción del trabajo", textarea({ name: "descripcion", maxlength: 2000 })),
       field("Fecha y hora de ingreso *", input({ name: "fecha_ingreso", type: "datetime-local", value: toLocalInput(), max: "2100-12-31T23:59" })),
       tieneEstandar(state.taller)
         ? field(ETQ.km, input({ name: "kilometraje_ingreso", type: "number", min: 0, max: 3000000, inputmode: "numeric", placeholder: "Ej.: 85400" }))
@@ -209,7 +210,7 @@ export async function render(box) {
       vehiculo_id: vehiculo.id,
       tipo: fd.get("tipo"),
       motivo,
-      descripcion: val(fd, "descripcion"),
+      ...(!tieneEstandar(state.taller) ? { descripcion: val(fd, "descripcion") } : {}),
       fecha_ingreso: fromLocalInput(fd.get("fecha_ingreso")),
       observacion_ingreso: val(fd, "observacion_ingreso"),
       observaciones: val(fd, "observaciones"),

@@ -1,5 +1,6 @@
 import { sb } from "../sb.js";
-import { h, must, formatPlaca, fmtFecha, errMsg, parecePlaca } from "../util.js";
+import { h, must, formatPlaca, fmtFecha, errMsg, parecePlaca, tieneEstandar } from "../util.js";
+import { state } from "../state.js";
 import { pageHead, input, empty, loading, errorBox, estadoBadge } from "../ui.js";
 import { ETQ } from "../documento.js";
 import { cargarIndice, buscarEnIndice } from "../buscar.js";
@@ -72,7 +73,7 @@ function detalle(o, abierto) {
     h("dl", { class: "hist-body" },
       dato("Tipo", o.tipo === "preventivo" ? "Preventivo" : "Correctivo"),
       dato("Motivo", o.motivo),
-      dato("Descripción", o.descripcion),
+      (o.descripcion || !tieneEstandar(state.taller)) && dato("Descripción", o.descripcion),
       dato("Ingreso", fmtFecha(o.fecha_ingreso)),
       o.kilometraje_ingreso != null && dato("Kilometraje", `${Number(o.kilometraje_ingreso).toLocaleString("es-EC")} km`),
       dato(ETQ.ingreso, o.observacion_ingreso),

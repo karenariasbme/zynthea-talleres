@@ -114,7 +114,6 @@ function selectorCliente(idx, inicial) {
 
 const camposPresupuesto = (p) => [
   field("Motivo *", input({ name: "motivo", maxlength: 300, required: true, value: p?.motivo ?? "", placeholder: "Ej.: mantenimiento de 50.000 km" })),
-  field("Descripción del trabajo", textarea({ name: "descripcion", maxlength: 2000, value: p?.descripcion ?? "" })),
   field(ETQ.observaciones, textarea({ name: "observaciones", maxlength: 2000, value: p?.observaciones ?? "",
     placeholder: "Condiciones, tiempo estimado, garantía…" })),
   field("Validez (días) *", input({ name: "validez_dias", type: "number", min: 1, max: 365, required: true, value: p?.validez_dias ?? 15 })),
@@ -125,7 +124,7 @@ function leerCampos(fd) {
   const validez = num(fd, "validez_dias");
   if (!motivo) throw userError("Escribe el motivo del presupuesto.");
   if (!(validez >= 1 && validez <= 365)) throw userError("La validez debe estar entre 1 y 365 días.");
-  return { motivo, descripcion: val(fd, "descripcion"), observaciones: val(fd, "observaciones"), validez_dias: Math.round(validez) };
+  return { motivo, observaciones: val(fd, "observaciones"), validez_dias: Math.round(validez) };
 }
 
 export async function renderNuevo(box) {
@@ -196,7 +195,7 @@ function datosDoc(p, extra) {
   return {
     tipoDoc: "presupuesto", taller: state.taller, codigo: p.codigo, badge: badgePr(p.estado),
     cliente: { nombre: p.cliente.nombre, cedula_ruc: p.cliente.cedula_ruc, telefono: p.cliente.telefono },
-    vehiculo: v, motivo: p.motivo, descripcion: p.descripcion, observaciones: p.observaciones,
+    vehiculo: v, motivo: p.motivo, descripcion: p.descripcion, ocultarDescripcionVacia: true, observaciones: p.observaciones,
     fecha: p.created_at, valido_hasta: new Date(new Date(p.created_at).getTime() + p.validez_dias * 86400000).toISOString(),
     items: extra?.items || [], totales: extra?.totales, aplica_iva: extra?.iva?.aplica_iva ?? p.aplica_iva,
     iva_porcentaje: extra?.iva?.iva_porcentaje ?? p.iva_porcentaje,

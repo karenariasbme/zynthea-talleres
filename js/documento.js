@@ -46,6 +46,7 @@ export function tablaItems(items, totales, ivaPct, aplicaIva) {
 
 /**
  * d = { tipoDoc: "orden" | "presupuesto", taller, codigo, badge, cliente, vehiculo, tipo, motivo, descripcion,
+ *       ocultarDescripcionVacia (Estándar: "Descripción" solo si ya tiene una),
  *       fecha_ingreso, kilometraje_ingreso, observacion_ingreso, fecha_salida, observacion_salida, observaciones,
  *       fecha, valido_hasta, items, totales, aplica_iva, iva_porcentaje, firmas, pie }
  */
@@ -86,7 +87,7 @@ export function documento(d) {
       h("dl", {},
         esOrden && dato("Tipo de mantenimiento", d.tipo === "preventivo" ? "Preventivo" : "Correctivo"),
         dato("Motivo", d.motivo),
-        dato("Descripción", d.descripcion))),
+        (d.descripcion || !d.ocultarDescripcionVacia) && dato("Descripción", d.descripcion))),
     esOrden
       ? h("div", { class: "doc-cols" },
           h("section", {},
