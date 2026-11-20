@@ -1,7 +1,7 @@
 // Documento de orden de trabajo o presupuesto (vista imprimible).
 // Lo usan la app (con sesión) y las páginas públicas orden.html / presupuesto.html (sin sesión).
 // Nunca muestra costos: solo precios de venta.
-import { h, formatPlaca, fmtFecha, usd } from "./util.js";
+import { h, formatPlaca, fmtFecha, usd, datosPago, filasPago, toast } from "./util.js";
 import { tallerLogo } from "./ui.js";
 
 export const TIPO_ITEM = { mano_obra: "Mano de obra", repuesto: "Repuesto", otro: "Otro" };
@@ -18,6 +18,22 @@ const dato = (label, value) =>
   h("div", { class: "dato" }, h("dt", {}, label), h("dd", {}, value == null || value === "" ? "—" : value));
 
 const km = (n) => (n == null ? null : `${Number(n).toLocaleString("es-EC")} km`);
+
+/** "Datos de pago" del taller; null si no hay. copiar = botón "Copiar" junto al número (enlace público, no se imprime). */
+function seccionPago(dp, copiar) {
+  const p = datosPago(dp);
+  if (!p) return null;
+  const valor = (k, v) => k !== "N.º de cuenta" || !copiar ? v
+    : h("span", { class: "pago-num" }, h("span", { class: "mono" }, v),
+        h("button", { class: "btn small ghost no-print", type: "button", onclick: async () => {
+          try { await navigator.clipboard.writeText(v.replace(/[\s-]/g, "")); toast("Número de cuenta copiado"); }
+          catch { prompt("Copia el número de cuenta:", v); }
+        } }, "Copiar"));
+  return h("section", { class: "doc-pago" },
+    h("h3", {}, "Datos de pago"),
+    h("dl", {}, filasPago(p).map(([k, v]) => dato(k, valor(k, v)))),
+    p.nota && h("p", { class: "doc-pago-nota" }, p.nota));
+}
 
 /** Tabla de ítems y totales (precios de venta). */
 export function tablaItems(items, totales, ivaPct, aplicaIva) {
@@ -48,7 +64,8 @@ export function tablaItems(items, totales, ivaPct, aplicaIva) {
  * d = { tipoDoc: "orden" | "presupuesto", taller, codigo, badge, cliente, vehiculo, tipo, motivo, descripcion,
  *       ocultarDescripcionVacia (Estándar: "Descripción" solo si ya tiene una),
  *       fecha_ingreso, kilometraje_ingreso, observacion_ingreso, fecha_salida, observacion_salida, observaciones,
- *       fecha, valido_hasta, items, totales, aplica_iva, iva_porcentaje, firmas, pie }
+ *       fecha, valido_hasta, items, totales, aplica_iva, iva_porcentaje, firmas, pie,
+ *       datos_pago (null = no se muestra), copiarCuenta (botón "Copiar" en el enlace público) }
  */
 export function documento(d) {
   const t = d.taller || {};
@@ -107,12 +124,13 @@ export function documento(d) {
             dato("Fecha", fmtFecha(d.fecha)),
             dato("Válido hasta", fmtFecha(d.valido_hasta)))),
     d.items?.length
-      ? h("section", {}, h("h3", {}, esOrden ? "Mano de obra y repuestos" : "Detalle del presupuesto"),
+      ? h("section", { class: "doc-items" }, h("h3", {}, esOrden ? "Mano de obra y repuestos" : "Detalle del presupuesto"),
           tablaItems(d.items, d.totales, d.iva_porcentaje, d.aplica_iva))
       : null,
     h("section", {},
       h("h3", {}, ETQ.observaciones),
       h("p", { class: "doc-obs" }, d.observaciones || "—")),
+    seccionPago(d.datos_pago, d.copiarCuenta),
     d.firmas !== false && h("footer", { class: "doc-foot" },
       h("div", { class: "firma" }, esOrden ? "Firma del cliente" : "Aceptación del cliente"),
       h("div", { class: "firma" }, "Firma del taller")),

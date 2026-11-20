@@ -202,7 +202,7 @@ function bienvenida(t) {
   });
 }
 
-const TALLER_COLS = "id,nombre,plan,trial_ends_at,ruc,direccion,telefono,correo,logo_path";
+const TALLER_COLS = "id,nombre,plan,trial_ends_at,ruc,direccion,telefono,correo,logo_path,datos_pago";
 
 async function init() {
   const errGoogle = errorOAuth(window.__urlInicial || location.href);

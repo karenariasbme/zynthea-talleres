@@ -199,6 +199,7 @@ function datosDoc(p, extra) {
     fecha: p.created_at, valido_hasta: new Date(new Date(p.created_at).getTime() + p.validez_dias * 86400000).toISOString(),
     items: extra?.items || [], totales: extra?.totales, aplica_iva: extra?.iva?.aplica_iva ?? p.aplica_iva,
     iva_porcentaje: extra?.iva?.iva_porcentaje ?? p.iva_porcentaje,
+    datos_pago: state.taller.datos_pago,   // presupuestos: solo Estándar
   };
 }
 

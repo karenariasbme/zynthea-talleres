@@ -1,5 +1,5 @@
 import { sb } from "../sb.js";
-import { h, must, val, toast, errMsg, PLANES, PLANES_URL, diasRestantes, tieneEstandar, telWa, urlPublica } from "../util.js";
+import { h, must, val, toast, errMsg, PLANES, PLANES_URL, diasRestantes, tieneEstandar, telWa, urlPublica, datosPago, TIPO_CUENTA } from "../util.js";
 import { state } from "../state.js";
 import { pageHead, field, input, asyncForm, userError, tallerLogo, bloqueoEstandar } from "../ui.js";
 
@@ -32,6 +32,7 @@ export async function render(box) {
       datosCard(),
       logoCard(),
       enlacesCard(),
+      pagoCard(),
       planCard(),
       cuentaCard(user)));
 }
@@ -134,6 +135,44 @@ function logoCard() {
     fileIn,
     h("div", { class: "actions" }, subirLbl, quitarBtn),
     msg);
+}
+
+// ---------- c2) Datos de pago (Plan Estándar) ----------
+function pagoCard() {
+  const t = state.taller;
+  if (!tieneEstandar(t)) {
+    return bloqueoEstandar(t, "Datos de pago",
+      "Tu cuenta bancaria al final de cada orden, presupuesto y mensaje, para que el cliente te transfiera.");
+  }
+  const p = datosPago(t.datos_pago) || {};
+  const tipo = h("select", { class: "input", name: "tipo_cuenta" },
+    h("option", { value: "" }, "—"),
+    Object.entries(TIPO_CUENTA).map(([k, txt]) => h("option", { value: k, selected: p.tipo_cuenta === k }, txt)));
+  return asyncForm({ class: "card stack" }, [
+    h("h2", {}, "Datos de pago"),
+    h("p", { class: "note" }, "Si los llenas, aparecen al final de cada orden y presupuesto (impresión, PDF y enlace) "
+      + "y en los mensajes de WhatsApp y correo, debajo del total. Todo es opcional: si los dejas vacíos, no aparece nada."),
+    h("div", { class: "cols" },
+      field("Banco", input({ name: "banco", maxlength: 120, value: p.banco ?? "", placeholder: "Ej.: Banco Pichincha" })),
+      field("Tipo de cuenta", tipo)),
+    h("div", { class: "cols" },
+      field("Número de cuenta", input({ name: "numero", inputmode: "numeric", maxlength: 30, value: p.numero ?? "", placeholder: "2201234567" })),
+      field("Cédula / RUC del titular", input({ name: "identificacion", inputmode: "numeric", maxlength: 13, value: p.identificacion ?? "" }))),
+    field("Titular de la cuenta", input({ name: "titular", maxlength: 120, value: p.titular ?? "" })),
+    field("Nota (opcional)", input({ name: "nota", maxlength: 300, value: p.nota ?? "", placeholder: "Ej.: Envía el comprobante por WhatsApp" })),
+    h("button", { class: "btn primary", type: "submit" }, "Guardar datos de pago"),
+  ], async (fd) => {
+    const nuevo = {};
+    for (const k of ["banco", "tipo_cuenta", "numero", "titular", "identificacion", "nota"]) {
+      const v = val(fd, k);
+      if (v) nuevo[k] = v;
+    }
+    if (nuevo.numero && !/^[0-9][0-9 -]*$/.test(nuevo.numero))
+      throw userError("El número de cuenta solo puede tener números (y guiones o espacios).");
+    const datos = datosPago(nuevo);
+    await guardarTaller({ datos_pago: datos });
+    toast(datos ? "Datos de pago guardados" : "Datos de pago quitados");
+  });
 }
 
 // ---------- d) Plan ----------

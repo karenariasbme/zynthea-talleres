@@ -172,6 +172,35 @@ export const mailtoUrl = (correo, asunto, cuerpo) =>
 /** URL absoluta de una página pública del sistema (orden.html, presupuesto.html, enlaces.html). */
 export const urlPublica = (pagina, token) => new URL(`${pagina}?t=${encodeURIComponent(token)}`, location.href).href;
 
+// ---------- Datos de pago del taller (Plan Estándar; columna talleres.datos_pago del 008) ----------
+export const TIPO_CUENTA = { ahorros: "Cuenta de ahorros", corriente: "Cuenta corriente" };
+/** Datos de pago con al menos un valor, o null si el taller no llenó nada. */
+export function datosPago(dp) {
+  if (!dp || typeof dp !== "object") return null;
+  const limpio = Object.fromEntries(Object.entries(dp).filter(([, v]) => typeof v === "string" && v.trim()));
+  return Object.keys(limpio).length ? limpio : null;
+}
+/** Filas [etiqueta, valor] de los datos de pago, en el orden en que se muestran. */
+export function filasPago(dp) {
+  const p = datosPago(dp);
+  if (!p) return [];
+  return [
+    ["Banco", p.banco],
+    ["Tipo de cuenta", TIPO_CUENTA[p.tipo_cuenta] || p.tipo_cuenta],
+    ["N.º de cuenta", p.numero],
+    ["Titular", p.titular],
+    ["Cédula / RUC", p.identificacion],
+  ].filter(([, v]) => v);
+}
+/** Bloque de texto para WhatsApp y correo ("" si no hay datos de pago). */
+export function textoPago(dp) {
+  const p = datosPago(dp);
+  if (!p) return "";
+  const lineas = filasPago(p).map(([k, v]) => `${k}: ${v}`);
+  if (p.nota) lineas.push(p.nota);
+  return `\n\nDatos de pago:\n${lineas.join("\n")}`;
+}
+
 // ---------- Fechas: inicio y fin de un mes en Ecuador (UTC-5 fijo) ----------
 export function rangoMes(yyyyMm) {
   const [y, m] = yyyyMm.split("-").map(Number);
